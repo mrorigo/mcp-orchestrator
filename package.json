@@ -1,0 +1,39 @@
+{
+  "name": "mcp-orchestrator",
+  "version": "0.1.0",
+  "description": "A lightweight library for composing and orchestrating MCP servers into domain-specific experts.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "mcp-orchestrator": "./dist/cli/generate-types.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "lint": "eslint src/**/*.ts",
+    "example:triage": "ts-node examples/support-triage/index.ts"
+  },
+  "keywords": [
+    "mcp",
+    "orchestration",
+    "agent",
+    "ai",
+    "llm"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.0",
+    "@modelcontextprotocol/sdk": "^1.0.1",
+    "commander": "^14.0.2",
+    "json-schema-to-typescript": "^15.0.4",
+    "openai": "^4.73.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.5"
+  }
+}
