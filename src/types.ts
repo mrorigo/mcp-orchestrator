@@ -13,6 +13,7 @@ export interface ServerConfig {
     auth?: {
         token?: string;
     };
+    headers?: Record<string, string>;
 }
 
 export interface OrchestratorConfig {

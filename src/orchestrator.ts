@@ -1,6 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
-import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import {
     OrchestratorConfig,
     ServerConfig,
@@ -64,13 +64,21 @@ export class MCPOrchestrator extends EventEmitter {
                     env: config.env
                 });
             } else if (config.url) {
-                transport = new SSEClientTransport(new URL(config.url), {
-                    eventSourceInit: {
-                        // header auth not directly supported in EventSource standard, 
-                        // but some polyfills or server implementations might handle it.
-                        // For now, we assume URL param or standard SSE.
-                        // If auth token is provided, it might need to be passed differently depending on the SDK version.
-                    }
+                // Create the transport URL pointing to the /mcp endpoint
+                const mcpUrl = new URL('/mcp', config.url);
+                
+                // Prepare request initialization with headers if provided
+                const requestInit: RequestInit = {};
+                
+                // Add authentication headers if provided in config
+                if (config.headers) {
+                    requestInit.headers = {
+                        ...config.headers
+                    };
+                }
+
+                transport = new StreamableHTTPClientTransport(mcpUrl, {
+                    requestInit
                 });
             } else {
                 throw new Error(`Invalid server config for ${name}: missing command or url`);

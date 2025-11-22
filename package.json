@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "vitest",
+    "test": "vitest run",
     "lint": "eslint src/**/*.ts",
     "example:triage": "ts-node examples/support-triage/index.ts"
   },
@@ -24,7 +24,7 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",
-    "@modelcontextprotocol/sdk": "^1.10.0",
+    "@modelcontextprotocol/sdk": "^1.11.2",
     "commander": "^14.0.2",
     "json-schema-to-typescript": "^15.0.4",
     "openai": "^4.73.0",
