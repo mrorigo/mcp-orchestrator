@@ -1,0 +1,24 @@
+# Source and tests
+src/
+tests/
+examples/
+coverage/
+.crush/
+.gemini/
+
+# Config files
+tsconfig.json
+vitest.config.ts
+eslint.config.js
+.gitignore
+.env
+.DS_Store
+
+# Documentation (optional, but keeping README)
+docs/
+AGENTS.md
+repomix-output.xml
+
+# Scripts
+verify_sdk_version.ts
+check_client_handler.ts

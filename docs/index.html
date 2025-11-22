@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Orchestrator | Developer Landing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inconsolata:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #050910;
+      --panel: rgba(255, 255, 255, 0.03);
+      --panel-strong: rgba(255, 255, 255, 0.08);
+      --border: rgba(255, 255, 255, 0.12);
+      --text: #e9edf4;
+      --muted: #9fb2d1;
+      --accent: #4de5ff;
+      --accent-2: #7c6dff;
+      --green: #7de0c8;
+      --code-bg: rgba(5, 9, 16, 0.85);
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: 'Space Grotesk', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: radial-gradient(circle at 10% 20%, rgba(124, 109, 255, 0.14), transparent 30%),
+                  radial-gradient(circle at 80% 10%, rgba(77, 229, 255, 0.16), transparent 28%),
+                  radial-gradient(circle at 70% 70%, rgba(125, 224, 200, 0.08), transparent 25%),
+                  var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    code, pre { font-family: 'Inconsolata', 'SFMono-Regular', Consolas, monospace; }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(14px);
+      background: rgba(5, 9, 16, 0.7);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .orb {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(145deg, var(--accent), var(--accent-2));
+      box-shadow: 0 0 18px rgba(77, 229, 255, 0.55), inset 0 0 22px rgba(0,0,0,0.25);
+      position: relative;
+      overflow: hidden;
+    }
+    .orb::after {
+      content: "";
+      position: absolute;
+      inset: 4px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.4), transparent 40%);
+      mix-blend-mode: screen;
+      animation: pulse 3.6s ease-in-out infinite;
+    }
+
+    nav ul {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    nav a {
+      color: var(--muted);
+      font-weight: 500;
+      padding: 8px 12px;
+      border-radius: 10px;
+      transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    }
+    nav a:hover {
+      color: var(--text);
+      background: var(--panel);
+      transform: translateY(-1px);
+    }
+
+    .ghost-btn, .solid-btn {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border 0.2s ease;
+    }
+
+    .solid-btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #041018;
+      border: 1px solid transparent;
+      box-shadow: 0 12px 32px rgba(77, 229, 255, 0.25);
+    }
+
+    .ghost-btn:hover, .solid-btn:hover { transform: translateY(-2px) scale(1.01); }
+    .solid-btn:hover { box-shadow: 0 16px 46px rgba(77, 229, 255, 0.35); }
+
+    main { max-width: 1280px; margin: 0 auto; padding: 40px 20px 80px; }
+
+    .hero {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 32px;
+      padding: 32px;
+      background: var(--panel-strong);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .hero::before, .hero::after {
+      content: "";
+      position: absolute;
+      width: 360px;
+      height: 360px;
+      background: radial-gradient(circle, rgba(77, 229, 255, 0.08), transparent 55%);
+      filter: blur(6px);
+      z-index: 0;
+    }
+    .hero::before { top: -120px; left: -160px; }
+    .hero::after { bottom: -160px; right: -80px; }
+
+    .hero-content { z-index: 1; }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(77, 229, 255, 0.12);
+      color: var(--accent);
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      border: 1px solid rgba(77, 229, 255, 0.3);
+    }
+
+    h1 {
+      margin: 16px 0 12px;
+      font-size: clamp(32px, 5vw, 48px);
+      letter-spacing: -0.5px;
+    }
+
+    .lede {
+      color: var(--muted);
+      /*max-width: 600px;*/
+      font-size: 18px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(380px, 1.1fr) minmax(380px, 0.9fr);
+      gap: 28px;
+      align-items: stretch;
+    }
+
+    .stat-card, .code-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    .code-card { min-width: 380px; }
+
+    .stat-card strong { display: block; font-size: 28px; margin-bottom: 6px; color: var(--accent); }
+    .stat-card span { color: var(--muted); font-size: 14px; }
+
+    .bullet-list {
+      display: grid;
+      gap: 10px;
+      margin: 16px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    .bullet-list li {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      color: var(--muted);
+    }
+    .bullet-list em { color: var(--accent); font-style: normal; }
+
+    .code-card pre {
+      margin: 0;
+      background: var(--code-bg);
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid var(--border);
+      overflow: auto;
+      max-height: 380px;
+      white-space: pre;
+    }
+
+    .tagline {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .tag {
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .section {
+      margin-top: 70px;
+    }
+    .section h2 { margin: 0 0 12px; font-size: 28px; }
+    .section p { color: var(--muted); margin: 0 0 18px; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      min-height: 180px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s ease, border 0.2s ease, background 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(77, 229, 255, 0.5);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .card small { color: var(--muted); }
+    .icon {
+      width: 36px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: rgba(77, 229, 255, 0.12);
+      color: var(--accent);
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+
+    .code-tabs {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .tab-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .tab {
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .tab.active {
+      color: var(--text);
+      border-color: rgba(77, 229, 255, 0.6);
+      box-shadow: 0 6px 18px rgba(77, 229, 255, 0.16);
+      background: rgba(77, 229, 255, 0.08);
+    }
+
+    .tab-panels { padding: 16px; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .panel {
+      border-radius: 16px;
+      padding: 18px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+    }
+    .panel pre {
+      margin: 0;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow: auto;
+    }
+
+    .columns {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      align-items: start;
+    }
+
+    .list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 10px;
+    }
+    .list li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      color: var(--muted);
+    }
+    .pill {
+      padding: 6px 10px;
+      border-radius: 10px;
+      background: rgba(77, 229, 255, 0.12);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+      border: 1px solid rgba(77, 229, 255, 0.3);
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      position: relative;
+    }
+    .timeline-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      position: relative;
+    }
+    .timeline-card::before {
+      content: attr(data-step);
+      position: absolute;
+      top: -12px;
+      right: 12px;
+      padding: 6px 10px;
+      border-radius: 12px;
+      background: rgba(77, 229, 255, 0.12);
+      color: var(--accent);
+      font-weight: 700;
+      border: 1px solid rgba(77, 229, 255, 0.35);
+    }
+
+    .cta {
+      margin-top: 60px;
+      padding: 28px;
+      background: linear-gradient(135deg, rgba(77, 229, 255, 0.12), rgba(124, 109, 255, 0.12));
+      border: 1px solid rgba(77, 229, 255, 0.25);
+      border-radius: 18px;
+      display: grid;
+      gap: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    footer {
+      margin-top: 60px;
+      padding: 20px 0 40px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .code-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .copy {
+      padding: 6px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+    }
+    .copy:hover { color: var(--text); border-color: rgba(77, 229, 255, 0.5); }
+    .copy.copied { color: var(--green); border-color: rgba(125, 224, 200, 0.7); }
+
+    pre code { display: block; white-space: inherit; color: var(--text); }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.85; }
+      50% { transform: scale(1.08); opacity: 1; }
+    }
+
+    @media (max-width: 1024px) {
+      .hero-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 800px) {
+      .nav { flex-direction: column; align-items: flex-start; }
+      header { position: static; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="nav">
+      <div class="brand">
+        <div class="orb"></div>
+        <div>
+          <div>MCP Orchestrator</div>
+          <small style="color: var(--muted); font-weight:500;">Composable, typed, approval-aware</small>
+        </div>
+      </div>
+      <nav>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#patterns">Patterns</a></li>
+          <li><a href="#agents">Agents</a></li>
+          <li><a href="#workflow">Workflow</a></li>
+          <li><a href="https://github.com/" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </nav>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="ghost-btn" onclick="document.getElementById('install').scrollIntoView({behavior:'smooth'})">Install</button>
+        <button class="solid-btn" onclick="document.getElementById('cta').scrollIntoView({behavior:'smooth'})">Launch</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-content">
+        <span class="eyebrow">MCP-native orchestration for expert agents</span>
+        <h1>Compose, test, and ship MCP domain experts.</h1>
+        <p class="lede">
+          MCP Orchestrator gives you typed tool calls, structured LLM responses, and battle-tested execution patterns.
+          Wire up multiple MCP servers, layer approval flows, and keep agents predictable under load.
+        </p>
+        <!-- <div class="actions">
+          <button class="solid-btn" onclick="document.getElementById('patterns').scrollIntoView({behavior:'smooth'})">Explore Patterns</button>
+          <button class="ghost-btn" onclick="document.getElementById('agents').scrollIntoView({behavior:'smooth'})">Agent Blueprints</button>
+        </div> -->
+        <div class="tagline">
+          <div class="tag">↯ Dual-level LLM sampling</div>
+          <div class="tag">✓ Typed MCP tool contracts</div>
+          <div class="tag">⚙️ Sequential · Parallel · Retry · Conditional</div>
+        </div>
+      </div>
+      <!-- <div class="hero-grid">
+        <div class="stat-card">
+          <strong>Production-grade</strong>
+          <span>Approval-aware orchestration with rate limits, retries, and structured outputs.</span>
+          <ul class="bullet-list">
+            <li><em>Type-safe</em> tool calls and schema-validated LLM responses</li>
+            <li>Connect multiple <em>MCP servers</em> (Stdio or SSE)</li>
+            <li>Security policies + approval hooks for sampling requests</li>
+          </ul>
+        </div>
+        <div class="code-card">
+          <div class="code-head">
+            <span id="install">Install &amp; connect</span>
+            <button class="copy" data-copy="npm install mcp-orchestrator" onclick="copyCommand(this)">Copy</button>
+          </div>
+          <pre><code>npm install mcp-orchestrator
+
+import { MCPOrchestrator } from 'mcp-orchestrator';
+import { OpenAIProvider } from 'mcp-orchestrator/llm';
+
+const orchestrator = new MCPOrchestrator({
+  servers: {
+    filesystem: { command: 'npx', args: ['-y', '@modelcontextprotocol/server-filesystem', './'] },
+    docs: { command: 'mcp-docs', args: ['serve', './docs'] }
+  },
+  llm: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY }),
+  samplingOptions: { maxTokens: 1200, temperature: 0.4, requireApproval: true }
+});
+
+await orchestrator.connect();
+const files = await orchestrator.callTool('list_directory', { path: './docs' });
+const summary = await orchestrator.llm.generateStructured({
+  schema: z.object({ highlights: z.array(z.string()) }),
+  prompt: 'Summarize docs: ' + JSON.stringify(files)
+});</code></pre>
+        </div>
+      </div> -->
+    </section>
+
+    <section class="section" id="features">
+      <h2>Why MCP Orchestrator</h2>
+      <p>Bring domain-specific rigor to every agent. Typed inputs, resilient execution, and MCP-native sampling keep your workflows deterministic.</p>
+      <div class="grid">
+        <div class="card">
+          <div class="icon">TS</div>
+          <strong>Type-safe tools</strong>
+          <p>Validate tool params and outputs at runtime, and optionally generate static types for MCP contracts.</p>
+        </div>
+        <div class="card">
+          <div class="icon">LLM</div>
+          <strong>Structured outputs</strong>
+          <p>Build reliable prompts with Zod schemas and dual-level sampling for orchestrator or sub-server control.</p>
+        </div>
+        <div class="card">
+          <div class="icon">⧉</div>
+          <strong>Multi-server</strong>
+          <p>Blend Stdio and SSE MCP servers. Route tasks to the right expert without glue code.</p>
+        </div>
+        <div class="card">
+          <div class="icon">⚡</div>
+          <strong>Execution patterns</strong>
+          <p>Compose sequential, parallel, conditional, and retry flows with minimal boilerplate.</p>
+        </div>
+        <div class="card">
+          <div class="icon">🛡</div>
+          <strong>Security &amp; trust</strong>
+          <p>Approval workflows, rate limits, and policy hooks keep LLM sampling safe in production.</p>
+        </div>
+        <div class="card">
+          <div class="icon">🧪</div>
+          <strong>Test-friendly</strong>
+          <p>Mock MCP servers and trace executions to ship agents with confidence.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="patterns">
+      <h2>Execution Patterns</h2>
+      <p>Use prebuilt patterns to keep orchestration simple. Swap steps without rewriting scaffolding.</p>
+      <div class="code-tabs">
+        <div class="tab-list">
+          <button class="tab active" data-target="seq">Sequential</button>
+          <button class="tab" data-target="par">Parallel</button>
+          <button class="tab" data-target="cond">Conditional</button>
+          <button class="tab" data-target="retry">Retry</button>
+        </div>
+        <div class="tab-panels">
+          <div class="tab-panel active" id="seq">
+            <pre><code>const result = await orchestrator.execute('sequential', {
+  steps: [
+    { tool: 'list_directory', params: { path: './data' } },
+    { llm: { prompt: 'Summarize these files', schema: summarySchema } },
+    { tool: 'write_report', params: { destination: './reports' } }
+  ]
+});</code></pre>
+          </div>
+          <div class="tab-panel" id="par">
+            <pre><code>const results = await orchestrator.execute('parallel', {
+  tasks: [
+    { tool: 'search_files', params: { pattern: 'error' } },
+    { tool: 'run_command', params: { cmd: 'ps aux' } },
+    { llm: { prompt: 'Cluster the signals', schema: clusterSchema } }
+  ]
+});</code></pre>
+          </div>
+          <div class="tab-panel" id="cond">
+            <pre><code>const result = await orchestrator.execute('conditional', {
+  condition: { tool: 'check_status', threshold: 0.8 },
+  ifTrue: { llm: { prompt: 'Process success result' } },
+  ifFalse: { llm: { prompt: 'Handle failure case' } }
+});</code></pre>
+          </div>
+          <div class="tab-panel" id="retry">
+            <pre><code>const result = await orchestrator.execute('retry', {
+  task: { tool: 'unreliable_api' },
+  maxAttempts: 3,
+  backoff: 'exponential'
+});</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="agents">
+      <h2>Agent Blueprints</h2>
+      <p>Agents are composable execution units that mix LLM reasoning with MCP tools. Start with a blueprint, then specialize.</p>
+      <div class="columns">
+        <div class="panel">
+          <div class="pill">BaseAgent pattern</div>
+          <pre><code>import { BaseAgent } from 'mcp-orchestrator/patterns';
+
+class DataAnalystAgent extends BaseAgent {
+  async analyze(filePath: string) {
+    const data = await this.callTool('read_file', { path: filePath });
+    return this.llm.generateStructured({
+      schema: z.object({ summary: z.string(), insights: z.array(z.string()) }),
+      prompt: 'Analyze this data: ' + JSON.stringify(data)
+    });
+  }
+}</code></pre>
+        </div>
+        <div class="panel">
+          <strong>Composability principles</strong>
+          <ul class="list">
+            <li><span class="pill">Modular</span> Create focused agents for each domain.</li>
+            <li><span class="pill">Resilient</span> Add retries for unreliable tools.</li>
+            <li><span class="pill">Typed</span> Use generated types to prevent drift.</li>
+            <li><span class="pill">Tested</span> Mock MCP servers to validate behaviors.</li>
+            <li><span class="pill">Monitored</span> Emit traces for debugging and approvals.</li>
+          </ul>
+          <div class="tagline" style="margin-top:16px;">
+            <div class="tag">CodeReviewer</div>
+            <div class="tag">DataProcessor</div>
+            <div class="tag">APITester</div>
+            <div class="tag">DevOpsAgent</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="workflow">
+      <h2>From idea to shipped expert</h2>
+      <p>Map your flow from a single command. Every stage can be guarded with approval policies and structured outputs.</p>
+      <div class="timeline">
+        <div class="timeline-card" data-step="01">
+          <strong>Install &amp; wire servers</strong>
+          <p class="muted">Connect to filesystem, APIs, or custom MCP servers over Stdio or SSE.</p>
+          <small>npm install mcp-orchestrator</small>
+        </div>
+        <div class="timeline-card" data-step="02">
+          <strong>Design the contract</strong>
+          <p class="muted">Define tool params and Zod schemas for structured LLM outputs.</p>
+          <small>Type-safe by default</small>
+        </div>
+        <div class="timeline-card" data-step="03">
+          <strong>Compose patterns</strong>
+          <p class="muted">Swap sequential, parallel, conditional, and retry flows as needs evolve.</p>
+          <small>orchestrator.execute(pattern, config)</small>
+        </div>
+        <div class="timeline-card" data-step="04">
+          <strong>Secure &amp; monitor</strong>
+          <p class="muted">Approval hooks, rate limits, and traces keep production safe.</p>
+          <small>SamplingSecurityManager</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta" id="cta">
+      <div>
+        <div class="pill">Ready to orchestrate?</div>
+        <h3 style="margin:8px 0 4px;">Build your first MCP expert today.</h3>
+        <p style="color: var(--muted); margin:0;">Ship agents with typed tools, structured outputs, and production guardrails.</p>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <button class="solid-btn" onclick="window.open('https://www.npmjs.com/package/mcp-orchestrator','_blank')">npm install mcp-orchestrator</button>
+        <button class="ghost-btn" onclick="window.open('../README.md','_blank')">Open README</button>
+      </div>
+    </section>
+
+    <footer>
+      Built for developers who want MCP-native experts. Explore more in docs/ and examples/.
+    </footer>
+  </main>
+
+  <script>
+    const tabs = document.querySelectorAll('.tab');
+    const panels = document.querySelectorAll('.tab-panel');
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        panels.forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.target).classList.add('active');
+      });
+    });
+
+    function copyCommand(el) {
+      const text = el.getAttribute('data-copy');
+      navigator.clipboard.writeText(text).then(() => {
+        el.classList.add('copied');
+        el.textContent = 'Copied';
+        setTimeout(() => {
+          el.classList.remove('copied');
+          el.textContent = 'Copy';
+        }, 1200);
+      });
+    }
+  </script>
+</body>
+</html>

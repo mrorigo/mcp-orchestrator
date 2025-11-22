@@ -1,6 +1,12 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { z } from "zod";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import * as http from 'http';
+import * as crypto from 'crypto';
 import {
     OrchestratorConfig,
     ServerConfig,
@@ -13,12 +19,16 @@ import { ListToolsResult } from "@modelcontextprotocol/sdk/types.js";
 import { LLMProvider } from './llm/types';
 import { SamplingClient } from './sampling/client';
 import { SamplingProxy, createSamplingProxy } from './sampling/proxy';
+import { SamplingSecurityManager } from './sampling/security';
 import {
     SamplingCreateMessageRequest,
     SamplingResult,
     SamplingOptions,
     SamplingCapabilities,
-    SamplingCapabilityError
+    SamplingCapabilityError,
+    SamplingRejectedError,
+    ModelPreferences,
+    SamplingCreateMessageRequestSchema
 } from './sampling/types';
 
 export class MCPOrchestrator extends EventEmitter {
@@ -29,6 +39,9 @@ export class MCPOrchestrator extends EventEmitter {
     private samplingClients: Map<string, SamplingClient>;
     private samplingCapabilities: Map<string, SamplingCapabilities>;
     private defaultSamplingOptions: SamplingOptions;
+    private serverSession?: Server;
+    private securityManager: SamplingSecurityManager;
+    private httpServer?: http.Server;
 
     constructor(config: OrchestratorConfig) {
         super();
@@ -39,6 +52,9 @@ export class MCPOrchestrator extends EventEmitter {
         this.samplingCapabilities = new Map();
         this.llm = config.llm;
         this.defaultSamplingOptions = config.samplingOptions || {};
+        this.securityManager = new SamplingSecurityManager({
+            // requireApproval is handled per-request in SamplingOptions, not in constructor
+        });
 
         if (config.connectionOptions?.autoConnect) {
             this.connect().catch(err => {
@@ -66,10 +82,10 @@ export class MCPOrchestrator extends EventEmitter {
             } else if (config.url) {
                 // Create the transport URL pointing to the /mcp endpoint
                 const mcpUrl = new URL('/mcp', config.url);
-                
+
                 // Prepare request initialization with headers if provided
                 const requestInit: RequestInit = {};
-                
+
                 // Add authentication headers if provided in config
                 if (config.headers) {
                     requestInit.headers = {
@@ -89,10 +105,22 @@ export class MCPOrchestrator extends EventEmitter {
                 version: "0.1.0",
             }, {
                 capabilities: {
-                    // MCP sampling capabilities - use empty object for now
-                    // This will be handled by the SamplingClient
-                } as any
+                    sampling: {},
+                }
             });
+
+            // Register sampling handler for this client (so sub-server can request sampling)
+            const SamplingCreateMessageJsonRpcSchema = z.object({
+                method: z.literal("sampling/createMessage"),
+                params: SamplingCreateMessageRequestSchema,
+            });
+
+            client.setRequestHandler(
+                SamplingCreateMessageJsonRpcSchema,
+                async (request) => {
+                    return this.handleSubSampling(request.params) as any;
+                }
+            );
 
             await client.connect(transport);
             this.clients.set(name, client);
@@ -100,7 +128,7 @@ export class MCPOrchestrator extends EventEmitter {
             // Initialize sampling client for this server connection
             const samplingClient = new SamplingClient(client);
             this.samplingClients.set(name, samplingClient);
-            
+
             // Check and store sampling capabilities
             try {
                 const capabilities = await samplingClient.checkSamplingCapabilities();
@@ -147,6 +175,14 @@ export class MCPOrchestrator extends EventEmitter {
         }
         this.clients.clear();
         this.tools.clear();
+
+        if (this.serverSession) {
+            await this.serverSession.close();
+        }
+
+        if (this.httpServer) {
+            this.httpServer.close();
+        }
     }
 
     async callTool<T = any>(name: string, args: any): Promise<T> {
@@ -194,7 +230,7 @@ export class MCPOrchestrator extends EventEmitter {
 
         // Try to use MCP sampling if supported by any connected client
         const primaryClient = this.getPrimarySamplingClient();
-        
+
         if (primaryClient) {
             try {
                 const request: SamplingCreateMessageRequest = {
@@ -232,7 +268,7 @@ export class MCPOrchestrator extends EventEmitter {
         if (serverName) {
             return this.samplingCapabilities.get(serverName) || {};
         }
-        
+
         // Return combined capabilities from all servers
         const combinedCapabilities: SamplingCapabilities = {
             sampling: false,
@@ -299,6 +335,224 @@ export class MCPOrchestrator extends EventEmitter {
     }
 
     /**
+     * Enable the Orchestrator to act as an MCP server for sampling requests
+     */
+    async enableSamplingServer(mode: 'stdio' | 'http' | number = 'stdio', options: { enableSamplingTool?: boolean } = {}) {
+        let transport: any;
+        if (mode === 'stdio') {
+            transport = new StdioServerTransport();
+        } else {
+            const port = typeof mode === 'number' ? mode : 3000;
+
+            // Create HTTP transport
+            transport = new StreamableHTTPServerTransport({
+                sessionIdGenerator: () => crypto.randomUUID(),
+                enableJsonResponse: true,
+                enableDnsRebindingProtection: false // For development/testing ease
+            });
+
+            // Create and start HTTP server
+            this.httpServer = http.createServer(async (req, res) => {
+                // CORS headers for browser clients
+                res.setHeader('Access-Control-Allow-Origin', '*');
+                res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+                res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+                if (req.method === 'OPTIONS') {
+                    res.writeHead(200);
+                    res.end();
+                    return;
+                }
+
+                // Handle MCP requests
+                // The transport expects requests to be at /mcp or similar, but handleRequest checks the path?
+                // Actually handleRequest handles everything passed to it.
+                // We'll mount it on /mcp to be safe/standard
+                if (req.url?.startsWith('/mcp')) {
+                    try {
+                        await transport.handleRequest(req, res);
+                    } catch (error) {
+                        console.error('Error handling MCP request:', error);
+                        if (!res.headersSent) {
+                            res.writeHead(500);
+                            res.end('Internal Server Error');
+                        }
+                    }
+                } else {
+                    res.writeHead(404);
+                    res.end('Not Found');
+                }
+            });
+
+            await new Promise<void>((resolve) => {
+                this.httpServer?.listen(port, () => {
+                    console.error(`MCP Sampling Server listening on port ${port}`);
+                    resolve();
+                });
+            });
+        }
+
+        this.serverSession = new Server({
+            name: 'mcp-orchestrator',
+            version: '0.1.0'
+        }, {
+            capabilities: {
+                tools: {}
+            }
+        });
+
+        // Register tool handlers
+        this.serverSession.setRequestHandler(
+            z.object({ method: z.literal("tools/list") }),
+            async () => {
+                const tools = [];
+                if (options.enableSamplingTool) {
+                    tools.push({
+                        name: "sampling",
+                        description: "Request LLM sampling from the orchestrator",
+                        inputSchema: {
+                            type: "object",
+                            properties: {
+                                messages: {
+                                    type: "array",
+                                    items: {
+                                        type: "object",
+                                        properties: {
+                                            role: { type: "string", enum: ["user", "assistant"] },
+                                            content: {
+                                                anyOf: [
+                                                    { type: "string" },
+                                                    {
+                                                        type: "object",
+                                                        properties: {
+                                                            type: { type: "string", const: "text" },
+                                                            text: { type: "string" }
+                                                        },
+                                                        required: ["type", "text"]
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        required: ["role", "content"]
+                                    }
+                                },
+                                systemPrompt: { type: "string" },
+                                maxTokens: { type: "number" },
+                                temperature: { type: "number" },
+                                modelPreferences: { type: "object" }
+                            },
+                            required: ["messages"]
+                        }
+                    });
+                }
+                return { tools };
+            }
+        );
+
+        this.serverSession.setRequestHandler(
+            z.object({
+                method: z.literal("tools/call"),
+                params: z.object({
+                    name: z.string(),
+                    arguments: z.record(z.unknown())
+                })
+            }),
+            async (request) => {
+                if (request.params.name === "sampling") {
+                    // Validate arguments against schema manually or cast
+                    // For now, we cast to SamplingCreateMessageRequest-like structure
+                    const args = request.params.arguments as any;
+
+                    // Adapt tool arguments to SamplingCreateMessageRequest
+                    const samplingRequest: SamplingCreateMessageRequest = {
+                        messages: args.messages,
+                        systemPrompt: args.systemPrompt,
+                        maxTokens: args.maxTokens,
+                        temperature: args.temperature,
+                        modelPreferences: args.modelPreferences
+                    };
+
+                    const result = await this.handleSubSampling(samplingRequest);
+
+                    return {
+                        content: [{
+                            type: "text",
+                            text: result.content
+                        }]
+                    };
+                }
+                throw new Error(`Tool ${request.params.name} not found`);
+            }
+        );
+
+        await this.serverSession.connect(transport);
+        this.emit('sampling-server:started', { mode });
+    }
+
+    private async handleSubSampling(request: SamplingCreateMessageRequest): Promise<SamplingResult> {
+        // 1. Security/Approval (spec HITL)
+        // We don't have the origin in the request directly usually, but let's assume we can infer it or it's passed
+        // For now, we'll use a default context
+        const context = { origin: 'unknown-sub-server' };
+
+        // In a real implementation, we might want to map the transport/connection to a server name
+
+        const approval = await this.securityManager.requestApproval(request, {}, context);
+        if (!approval.approved) {
+            throw new SamplingRejectedError(approval.reason || 'Policy violation');
+        }
+
+        // 2. Format Prompt (spec: messages + systemPrompt + includeContext)
+        const prompt = this.formatSamplingPrompt(request);
+
+        // 3. Map modelPreferences (spec hints → LLM model)
+        const llmOptions = this.mapModelPreferences(request.modelPreferences || {});
+
+        // 4. Call LLM
+        let content: string;
+        // Note: Structured output (schema) is not yet standard in SamplingCreateMessageRequest in our types
+        // but if it were, we would handle it here.
+
+        content = await this.llm.generate({
+            prompt,
+            systemPrompt: request.systemPrompt,
+            maxTokens: request.maxTokens,
+            temperature: request.temperature,
+            ...llmOptions
+        });
+
+        // 5. Return spec response
+        return {
+            content,
+            model: this.getLLMModelName(),
+            stopReason: 'stop',
+            // usage: { ... } // Add usage if available from LLM provider
+        };
+    }
+
+    private formatSamplingPrompt(request: SamplingCreateMessageRequest): string {
+        const messagesText = request.messages.map(m => {
+            let content = '';
+            if (typeof m.content === 'string') {
+                content = m.content;
+            } else if (typeof m.content === 'object' && m.content !== null) {
+                if ('text' in m.content) {
+                    content = m.content.text;
+                } else if ('type' in m.content && m.content.type === 'image') {
+                    content = '[Image Content]';
+                }
+            }
+            return `${m.role.toUpperCase()}: ${content}`;
+        }).join('\n\n');
+        return request.systemPrompt ? `${request.systemPrompt}\n\n${messagesText}` : messagesText;
+    }
+
+    private mapModelPreferences(prefs: ModelPreferences) {
+        // Simple mapping: use the first hint if available
+        return prefs.hints?.[0] ? { model: prefs.hints[0] } : {};
+    }
+
+    /**
      * Get the primary sampling client (first one that supports sampling)
      */
     private getPrimarySamplingClient(): SamplingClient | null {
@@ -324,7 +578,7 @@ export class MCPOrchestrator extends EventEmitter {
 
         // Convert MCP messages to LLM provider format
         const prompt = this.convertMessagesToPrompt(messages, options.systemPrompt);
-        
+
         try {
             const content = await this.llm.generate({
                 prompt,

@@ -2,13 +2,21 @@
   "name": "mcp-orchestrator",
   "version": "0.1.0",
   "description": "A lightweight library for composing and orchestrating MCP servers into domain-specific experts.",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "bin": {
     "mcp-orchestrator": "./dist/cli/generate-types.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "test": "vitest run",
     "lint": "eslint src/**/*.ts",
     "example:triage": "ts-node examples/support-triage/index.ts"
@@ -20,7 +28,7 @@
     "ai",
     "llm"
   ],
-  "author": "",
+  "author": "mrorigo@gmail.com",
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",
@@ -34,6 +42,7 @@
     "@types/node": "^22.9.0",
     "@vitest/coverage-v8": "^2.1.9",
     "ts-node": "^10.9.2",
+    "tsup": "^8.5.1",
     "typescript": "^5.6.3",
     "vitest": "^2.1.5"
   }

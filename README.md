@@ -14,7 +14,11 @@ A lightweight TypeScript library for composing and orchestrating [Model Context 
 ## Installation
 
 ```bash
-npm install mcp-orchestrator
+git clone git@github.com:mrorigo/mcp-orchestrator.git
+cd mcp-orchestrator
+npm install
+npm run build
+npm run test
 ```
 
 ## Basic Usage

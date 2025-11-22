@@ -280,11 +280,22 @@ export class SamplingSecurityManager extends EventEmitter {
         // Remove or truncate sensitive content for display
         return {
             ...request,
-            messages: request.messages.map(msg => ({
-                ...msg,
-                content: msg.content.length > 200 ? msg.content.substring(0, 200) + '...' : msg.content,
-            })),
-            systemPrompt: request.systemPrompt && request.systemPrompt.length > 200 ? 
+            messages: request.messages.map(msg => {
+                let contentStr = '';
+                if (typeof msg.content === 'string') {
+                    contentStr = msg.content;
+                } else if (msg.content.type === 'text') {
+                    contentStr = msg.content.text;
+                } else {
+                    contentStr = '[Image Content]';
+                }
+
+                return {
+                    ...msg,
+                    content: contentStr.length > 200 ? contentStr.substring(0, 200) + '...' : contentStr,
+                };
+            }),
+            systemPrompt: request.systemPrompt && request.systemPrompt.length > 200 ?
                 request.systemPrompt.substring(0, 200) + '...' : request.systemPrompt,
         };
     }
@@ -303,7 +314,16 @@ export class SamplingSecurityManager extends EventEmitter {
 
     private estimateCost(request: SamplingCreateMessageRequest): number {
         // Simple cost estimation based on message length and max tokens
-        const messageLength = request.messages.reduce((sum, msg) => sum + msg.content.length, 0);
+        const messageLength = request.messages.reduce((sum, msg) => {
+            if (typeof msg.content === 'string') {
+                return sum + msg.content.length;
+            } else if (msg.content.type === 'text') {
+                return sum + msg.content.text.length;
+            } else {
+                // Rough estimate for image: 1000 chars equivalent?
+                return sum + 1000;
+            }
+        }, 0);
         const estimatedTokens = Math.ceil(messageLength / 4) + (request.maxTokens || 1000);
         return estimatedTokens * 0.0001; // Rough estimate
     }

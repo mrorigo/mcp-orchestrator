@@ -8,41 +8,29 @@ import {
   SamplingCapabilityError,
   SamplingTimeoutError,
   SamplingRejectedError,
-} from './types.js';
+} from './types';
 
 export class SamplingClient {
-  constructor(private client: Client) {}
+  constructor(private client: Client) { }
 
   /**
    * Check if the client supports sampling capabilities
    */
   async checkSamplingCapabilities(): Promise<SamplingCapabilities> {
-    try {
-      // Get server capabilities by checking if sampling methods exist
-      // This is a bit of a hack since MCP SDK doesn't expose capability checking directly
-      const capabilities: SamplingCapabilities = {};
-      
-      // Test basic sampling capability by attempting a minimal request
-      try {
-        await this.testBasicSampling();
-        capabilities.sampling = true;
-        
-        // Test tool sampling capability
-        await this.testToolSampling();
-        capabilities.samplingTools = true;
-      } catch (error: any) {
-        // If sampling is not supported, capabilities remain undefined
-        if (error?.code === 'METHOD_NOT_FOUND' || error?.message?.includes('not found')) {
-          return capabilities;
-        }
-        // Other errors might indicate temporary issues, still return capabilities
-      }
+    const capabilities: SamplingCapabilities = {};
 
-      return capabilities;
-    } catch (error: any) {
-      // If we can't determine capabilities, assume none are supported
-      return {};
+    // Check if the server supports sampling
+    // In MCP SDK, we can check the server capabilities exposed on the client
+    const serverCapabilities = (this.client as any).getServerCapabilities?.();
+
+    if (serverCapabilities?.sampling) {
+      capabilities.sampling = true;
+      // Assume tool sampling is supported if sampling is supported, 
+      // or check specific sub-capabilities if the spec defines them (it currently doesn't deeply)
+      capabilities.samplingTools = true;
     }
+
+    return capabilities;
   }
 
   /**
@@ -114,11 +102,11 @@ export class SamplingClient {
     // Use the MCP client's sampling method
     // This assumes the MCP SDK has a sampling.createMessage method
     const result = await (this.client as any).sampling?.createMessage?.(request);
-    
+
     if (!result) {
       throw new SamplingCapabilityError('sampling');
     }
-    
+
     return result;
   }
 
@@ -134,13 +122,13 @@ export class SamplingClient {
 
     let currentRequest = request;
     const maxIterations = options?.maxRetries || 5;
-    
+
     for (let i = 0; i < maxIterations; i++) {
       const response = await this.makeSamplingRequest(currentRequest);
-      
+
       // Check if the response contains tool calls
       const toolUseContent = this.extractToolUseContent(response.content);
-      
+
       if (!toolUseContent) {
         // No tool calls, return the final response
         return {
@@ -152,10 +140,10 @@ export class SamplingClient {
 
       // Execute the tools
       const toolResults = await this.executeTools(toolUseContent);
-      
+
       // Add tool results to the conversation
       const toolResultContent = this.createToolResultContent(toolResults);
-      
+
       // Continue the conversation with tool results
       currentRequest = {
         ...currentRequest,
@@ -166,7 +154,7 @@ export class SamplingClient {
         ]
       };
     }
-    
+
     throw new Error('Tool loop exceeded maximum iterations');
   }
 
@@ -184,7 +172,7 @@ export class SamplingClient {
   private async executeTools(toolUseContent: any[]): Promise<any[]> {
     // Execute the requested tools
     const results = [];
-    
+
     for (const toolUse of toolUseContent) {
       try {
         const result = await this.client.callTool({
@@ -210,7 +198,7 @@ export class SamplingClient {
         });
       }
     }
-    
+
     return results;
   }
 

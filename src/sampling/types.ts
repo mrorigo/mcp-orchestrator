@@ -5,7 +5,11 @@ import { z } from 'zod';
 
 export const SamplingMessageSchema = z.object({
   role: z.enum(['user', 'assistant']),
-  content: z.string(),
+  content: z.union([
+    z.string(),
+    z.object({ type: z.literal('text'), text: z.string() }),
+    z.object({ type: z.literal('image'), data: z.string(), mimeType: z.string() })
+  ]),
 });
 
 export const ModelPreferencesSchema = z.object({

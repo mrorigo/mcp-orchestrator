@@ -3,6 +3,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
+  ErrorCode,
+  McpError
 } from "@modelcontextprotocol/sdk/types.js";
 import { Flight, Hotel, TravelPreferences, PastTrip } from "../types/index.js";
 
@@ -19,7 +21,7 @@ const mockFlights: Flight[] = [
     duration: "8h 30m"
   },
   {
-    id: "FL002", 
+    id: "FL002",
     airline: "American Airlines",
     from: "NYC",
     to: "Barcelona",
@@ -30,7 +32,7 @@ const mockFlights: Flight[] = [
   },
   {
     id: "FL003",
-    airline: "Vueling", 
+    airline: "Vueling",
     from: "NYC",
     to: "Barcelona",
     departureTime: "2024-06-15T10:30:00Z",
@@ -46,7 +48,7 @@ const mockHotels: Hotel[] = [
     name: "Hotel Barcelona Plaza",
     location: "Barcelona City Center",
     checkIn: "2024-06-15",
-    checkOut: "2024-06-22", 
+    checkOut: "2024-06-22",
     pricePerNight: 150,
     totalPrice: 1050,
     rating: 4.2,
@@ -67,7 +69,7 @@ const mockHotels: Hotel[] = [
     id: "HT003",
     name: "Hostel Barcelona",
     location: "Barcelona Beach",
-    checkIn: "2024-06-15", 
+    checkIn: "2024-06-15",
     checkOut: "2024-06-22",
     pricePerNight: 45,
     totalPrice: 315,
@@ -92,7 +94,7 @@ const mockPastTrips: PastTrip[] = [
     highlights: ["Sagrada Familia", "Park Güell", "Gothic Quarter", "Tapas tours"]
   },
   {
-    id: "PT002", 
+    id: "PT002",
     destination: "Italy",
     year: 2023,
     rating: 4.8,
@@ -100,7 +102,7 @@ const mockPastTrips: PastTrip[] = [
   },
   {
     id: "PT003",
-    destination: "France", 
+    destination: "France",
     year: 2022,
     rating: 4.3,
     highlights: ["Eiffel Tower", "Louvre Museum", "Seine cruise"]
@@ -116,6 +118,7 @@ const server = new Server(
   {
     capabilities: {
       tools: {},
+      sampling: {}, // Declare sampling capability
     },
   }
 );
@@ -137,6 +140,19 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             travelers: { type: "number", description: "Number of travelers" }
           },
           required: ["from", "to", "date", "travelers"]
+        }
+      },
+      {
+        name: "analyzeFlights",
+        description: "Analyze flight options using LLM to find the best value",
+        inputSchema: {
+          type: "object",
+          properties: {
+            from: { type: "string", description: "Departure city" },
+            to: { type: "string", description: "Destination city" },
+            criteria: { type: "string", description: "Specific criteria (e.g., cheapest, fastest, best value)" }
+          },
+          required: ["from", "to", "criteria"]
         }
       },
       {
@@ -167,7 +183,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         name: "getPastTrips",
         description: "Get user's past travel history",
         inputSchema: {
-          type: "object", 
+          type: "object",
           properties: {},
           required: []
         }
@@ -198,6 +214,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (name) {
       case "searchFlights":
         return await searchFlights(args);
+      case "analyzeFlights":
+        return await analyzeFlights(args);
       case "bookHotel":
         return await bookHotel(args);
       case "getTravelPreferences":
@@ -216,16 +234,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           type: "text",
           text: JSON.stringify({ error: error.message })
         }
-      ]
+      ],
+      isError: true
     };
   }
 });
 
 async function searchFlights(args: any) {
   const { from, to, date, returnDate, travelers } = args;
-  
+
   // Filter flights based on criteria (simplified mock logic)
-  let flights = mockFlights.filter(flight => 
+  let flights = mockFlights.filter(flight =>
     flight.from.toLowerCase().includes(from.toLowerCase()) &&
     flight.to.toLowerCase().includes(to.toLowerCase())
   );
@@ -244,9 +263,69 @@ async function searchFlights(args: any) {
   };
 }
 
+async function analyzeFlights(args: any) {
+  const { from, to, criteria } = args;
+
+  // 1. Get flights
+  const flights = mockFlights.filter(flight =>
+    flight.from.toLowerCase().includes(from.toLowerCase()) &&
+    flight.to.toLowerCase().includes(to.toLowerCase())
+  );
+
+  if (flights.length === 0) {
+    return {
+      content: [{ type: "text", text: "No flights found to analyze." }]
+    };
+  }
+
+  // 2. Use Sampling to ask LLM to analyze
+  try {
+    const result = await server.createMessage({
+      messages: [
+        {
+          role: "user",
+          content: {
+            type: "text",
+            text: `Please analyze these flights based on the following criteria: "${criteria}".
+            
+            Flights Data:
+            ${JSON.stringify(flights, null, 2)}
+            
+            Provide a recommendation for the best flight.`
+          }
+        }
+      ],
+      systemPrompt: "You are a travel expert assistant. Analyze flight options and give concise recommendations.",
+      maxTokens: 300,
+      modelPreferences: {
+        hints: ["gpt-4o-mini", "claude-3-haiku"]
+      }
+    });
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: result.content.type === 'text' ? result.content.text : "Analysis completed but content format unexpected."
+        }
+      ]
+    };
+  } catch (error: any) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `Failed to analyze flights using sampling: ${error.message}`
+        }
+      ],
+      isError: true
+    };
+  }
+}
+
 async function bookHotel(args: any) {
   const { location, checkIn, checkOut, budget, travelers } = args;
-  
+
   // Filter hotels based on budget
   const hotels = mockHotels.filter(hotel => hotel.totalPrice <= budget);
 
@@ -291,7 +370,7 @@ async function getPastTrips() {
 
 async function createItinerary(args: any) {
   const { destination, flights, hotels, activities = [] } = args;
-  
+
   const itinerary = {
     destination,
     flights,
@@ -299,7 +378,7 @@ async function createItinerary(args: any) {
     activities,
     createdAt: new Date().toISOString(),
     totalCost: flights.reduce((sum: number, flight: Flight) => sum + flight.price, 0) +
-               hotels.reduce((sum: number, hotel: Hotel) => sum + hotel.totalPrice, 0)
+      hotels.reduce((sum: number, hotel: Hotel) => sum + hotel.totalPrice, 0)
   };
 
   return {
