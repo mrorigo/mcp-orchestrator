@@ -7,6 +7,7 @@ A lightweight TypeScript library for composing and orchestrating [Model Context 
 - **Type-Safe Tool Calling**: Runtime validation and optional static type generation.
 - **Multi-Server Management**: Connect to multiple MCP servers via Stdio or SSE.
 - **Structured LLM Outputs**: Built-in support for OpenAI and Anthropic with Zod schema validation.
+- **Dual-Level LLM Sampling**: Support for both orchestrator-level and sub-server LLM sampling via MCP protocol.
 - **Expert Composition**: Helper patterns for sequential, parallel, retry, and conditional execution.
 - **Zero-Opinion Orchestration**: Use plain async/await or integrate with any workflow engine (Temporal, etc.).
 
@@ -42,6 +43,183 @@ const analysis = await orchestrator.llm.generateStructured({
   schema: z.object({ summary: z.string() }),
   prompt: `Analyze these files: ${JSON.stringify(result)}`
 });
+```
+
+## Dual-Level LLM Sampling
+
+The library supports **two levels of LLM sampling** through the Model Context Protocol (MCP):
+
+### 1. Orchestrator-Level Sampling
+
+Direct LLM sampling via MCP `sampling/createMessage` when supported by MCP clients.
+
+```typescript
+// Enable sampling with default options
+const orchestrator = new MCPOrchestrator({
+  servers: { /* your servers */ },
+  llm: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY }),
+  samplingOptions: {
+    maxTokens: 1000,
+    temperature: 0.7,
+    requireApproval: true, // Require user approval for sampling requests
+    timeoutMs: 30000
+  }
+});
+
+// Check sampling capabilities
+const capabilities = orchestrator.getSamplingCapabilities();
+console.log('Client supports sampling:', capabilities);
+
+// Perform orchestrator-level sampling
+const result = await orchestrator.sample(
+  [
+    { role: 'user', content: 'Analyze the benefits of MCP orchestration' }
+  ],
+  {
+    systemPrompt: 'You are an expert in AI and distributed systems.',
+    maxTokens: 500,
+    origin: 'orchestrator'
+  }
+);
+
+console.log('Sample result:', result);
+```
+
+### 2. Sub-Server Sampling via Proxy
+
+Lightweight sampling proxy that forwards sub-server requests to the orchestrator's LLM provider.
+
+```typescript
+// Create sampling proxy for a sub-server
+const expertProxy = orchestrator.createSamplingProxy('data-analyzer', {
+  origin: 'data-expert',
+  maxTokens: 300,
+  requireApproval: false // Sub-server requests typically don't need approval
+});
+
+// Sub-server makes sampling request
+const analysisResult = await expertProxy.createMessage({
+  messages: [
+    { role: 'user', content: 'Analyze this dataset for trends' },
+    { role: 'assistant', content: 'I\'ll analyze the data for you.' }
+  ],
+  systemPrompt: 'You are a data analysis expert.',
+  maxTokens: 400
+});
+
+// Structured sampling for type-safe results
+const structuredResult = await expertProxy.createMessageStructured(
+  {
+    messages: [{ role: 'user', content: 'Provide analysis in JSON format' }],
+    systemPrompt: 'Return structured analysis results.',
+  },
+  undefined,
+  z.object({
+    trends: z.array(z.string()),
+    confidence: z.number(),
+    recommendations: z.array(z.string())
+  })
+);
+```
+
+## Security & Trust Features
+
+Built-in security and trust management for LLM sampling:
+
+```typescript
+import { SamplingSecurityManager, SecurityPolicy } from 'mcp-orchestrator/sampling';
+
+// Configure security manager
+const securityManager = new SamplingSecurityManager({
+  maxQueueSize: 50,
+  defaultRateLimit: {
+    requestsPerMinute: 30,
+    requestsPerHour: 500,
+    requestsPerDay: 5000,
+  }
+});
+
+// Add custom security policy
+const costLimitPolicy: SecurityPolicy = {
+  name: 'cost_limit_policy',
+  description: 'Reject expensive requests',
+  evaluate: async (request, options, context) => {
+    const estimatedCost = estimateCost(request);
+    if (estimatedCost > 1.00) {
+      return { approved: false, reason: 'Cost exceeds limit' };
+    }
+    return { approved: true };
+  }
+};
+
+securityManager.addPolicy(costLimitPolicy);
+
+// Handle approval workflow (for UI integration)
+securityManager.on('approval_requested', (approval) => {
+  console.log('User approval needed:', approval.id);
+  // Show approval dialog in your UI
+});
+
+// Check rate limits
+const rateLimitStatus = securityManager.getRateLimitStatus('my-app');
+console.log('Rate limit status:', rateLimitStatus);
+
+// Access audit log
+const auditLog = securityManager.getAuditLog({
+  eventType: 'approved',
+  startTime: Date.now() - 3600000 // Last hour
+});
+```
+
+## Tool-Enabled Sampling
+
+Support for LLM-to-tool reasoning loops when both client and server support it:
+
+```typescript
+// Define available tools for sampling
+const tools = [
+  {
+    name: 'search_database',
+    description: 'Search the database for information',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string' },
+        limit: { type: 'number' }
+      },
+      required: ['query']
+    }
+  },
+  {
+    name: 'calculate_metrics',
+    description: 'Calculate performance metrics',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        data: { type: 'array' },
+        operation: { type: 'string' }
+      },
+      required: ['data']
+    }
+  }
+];
+
+// Use tool-enabled sampling
+const result = await orchestrator.sample(
+  [
+    { 
+      role: 'user', 
+      content: 'Find relevant data and calculate average performance' 
+    }
+  ],
+  {
+    tools,
+    toolChoice: 'auto', // Let LLM choose which tools to use
+    origin: 'analyst-expert'
+  }
+);
+
+// The LLM will decide when to use tools and the system will handle the tool loop
 ```
 
 ## Type Generation
@@ -156,6 +334,29 @@ const result = await retry(
   }
 );
 ```
+
+## Best Practices
+
+### Sampling Considerations
+
+- **Cost Management**: Use security policies to limit expensive requests
+- **User Approval**: Enable approval workflows for sensitive operations
+- **Rate Limiting**: Implement appropriate rate limits to prevent abuse
+- **Fallback Strategy**: Always provide fallback when MCP sampling isn't available
+
+### Security Recommendations
+
+- **Origin Tracking**: Use distinct origins for different components to track usage
+- **Audit Logging**: Regularly review audit logs for unusual patterns
+- **Policy Enforcement**: Implement content filtering and cost control policies
+- **Timeout Handling**: Set appropriate timeouts to prevent hanging requests
+
+### Tool-Enabled Sampling
+
+- **Tool Design**: Keep tool schemas simple and well-documented
+- **Error Handling**: Implement robust error handling for tool execution
+- **Loop Prevention**: Set reasonable limits to prevent infinite tool loops
+- **User Experience**: Provide clear feedback when tool-enabled sampling is used
 
 ## License
 

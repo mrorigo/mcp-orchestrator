@@ -4,3 +4,4 @@ export * from './types';
 export * from './errors';
 export * as llm from './llm/index';
 export * as patterns from './patterns/index';
+export * as sampling from './sampling/index';

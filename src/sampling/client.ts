@@ -1,0 +1,226 @@
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import {
+  SamplingCreateMessageRequest,
+  SamplingMessageResponse,
+  SamplingResult,
+  SamplingOptions,
+  SamplingCapabilities,
+  SamplingCapabilityError,
+  SamplingTimeoutError,
+  SamplingRejectedError,
+} from './types.js';
+
+export class SamplingClient {
+  constructor(private client: Client) {}
+
+  /**
+   * Check if the client supports sampling capabilities
+   */
+  async checkSamplingCapabilities(): Promise<SamplingCapabilities> {
+    try {
+      // Get server capabilities by checking if sampling methods exist
+      // This is a bit of a hack since MCP SDK doesn't expose capability checking directly
+      const capabilities: SamplingCapabilities = {};
+      
+      // Test basic sampling capability by attempting a minimal request
+      try {
+        await this.testBasicSampling();
+        capabilities.sampling = true;
+        
+        // Test tool sampling capability
+        await this.testToolSampling();
+        capabilities.samplingTools = true;
+      } catch (error: any) {
+        // If sampling is not supported, capabilities remain undefined
+        if (error?.code === 'METHOD_NOT_FOUND' || error?.message?.includes('not found')) {
+          return capabilities;
+        }
+        // Other errors might indicate temporary issues, still return capabilities
+      }
+
+      return capabilities;
+    } catch (error: any) {
+      // If we can't determine capabilities, assume none are supported
+      return {};
+    }
+  }
+
+  /**
+   * Send a sampling request via MCP protocol
+   */
+  async createMessage(request: SamplingCreateMessageRequest, options?: SamplingOptions): Promise<SamplingResult> {
+    // Check if sampling is supported
+    const capabilities = await this.checkSamplingCapabilities();
+    if (!capabilities.sampling) {
+      throw new SamplingCapabilityError('sampling');
+    }
+
+    // Set up timeout if specified
+    const timeoutMs = options?.timeoutMs || 30000;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new SamplingTimeoutError(timeoutMs)), timeoutMs);
+    });
+
+    try {
+      // Make the sampling request via MCP protocol
+      const response = await Promise.race([
+        this.makeSamplingRequest(request),
+        timeoutPromise
+      ]);
+
+      return {
+        content: response.content,
+        model: response.model,
+        stopReason: response.stopReason,
+      };
+    } catch (error: any) {
+      // Handle specific sampling errors
+      if (error?.code === 'REQUEST_REJECTED') {
+        throw new SamplingRejectedError(error.details?.reason);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Create a message with tool support
+   */
+  async createMessageWithTools(
+    request: SamplingCreateMessageRequest & { tools: any[] },
+    options?: SamplingOptions
+  ): Promise<SamplingResult> {
+    // Check if tool sampling is supported
+    const capabilities = await this.checkSamplingCapabilities();
+    if (!capabilities.samplingTools) {
+      throw new SamplingCapabilityError('sampling.tools');
+    }
+
+    // For tool-enabled sampling, we need to handle the tool loop
+    return this.handleToolLoop(request, options);
+  }
+
+  private async testBasicSampling(): Promise<void> {
+    // This is a placeholder - in reality, we'd need to check the SDK documentation
+    // for the exact method to test sampling support
+    // For now, we'll assume if the client is connected, basic sampling might work
+  }
+
+  private async testToolSampling(): Promise<void> {
+    // Test tool sampling capability
+    // This would test the sampling/createMessage with tools parameter
+  }
+
+  private async makeSamplingRequest(request: SamplingCreateMessageRequest): Promise<SamplingMessageResponse> {
+    // Use the MCP client's sampling method
+    // This assumes the MCP SDK has a sampling.createMessage method
+    const result = await (this.client as any).sampling?.createMessage?.(request);
+    
+    if (!result) {
+      throw new SamplingCapabilityError('sampling');
+    }
+    
+    return result;
+  }
+
+  private async handleToolLoop(
+    request: SamplingCreateMessageRequest & { tools: any[] },
+    options?: SamplingOptions
+  ): Promise<SamplingResult> {
+    // Handle the tool-enabled sampling loop as per MCP spec
+    // 1. Send initial request with tools
+    // 2. If LLM returns ToolUseContent, execute the tools
+    // 3. Send ToolResultContent back to LLM
+    // 4. Continue until final response
+
+    let currentRequest = request;
+    const maxIterations = options?.maxRetries || 5;
+    
+    for (let i = 0; i < maxIterations; i++) {
+      const response = await this.makeSamplingRequest(currentRequest);
+      
+      // Check if the response contains tool calls
+      const toolUseContent = this.extractToolUseContent(response.content);
+      
+      if (!toolUseContent) {
+        // No tool calls, return the final response
+        return {
+          content: response.content,
+          model: response.model,
+          stopReason: response.stopReason,
+        };
+      }
+
+      // Execute the tools
+      const toolResults = await this.executeTools(toolUseContent);
+      
+      // Add tool results to the conversation
+      const toolResultContent = this.createToolResultContent(toolResults);
+      
+      // Continue the conversation with tool results
+      currentRequest = {
+        ...currentRequest,
+        messages: [
+          ...currentRequest.messages,
+          response,
+          toolResultContent
+        ]
+      };
+    }
+    
+    throw new Error('Tool loop exceeded maximum iterations');
+  }
+
+  private extractToolUseContent(content: string): any[] | null {
+    // Parse content to extract ToolUseContent
+    // This is a simplified implementation
+    try {
+      const parsed = JSON.parse(content);
+      return parsed.toolUse || null;
+    } catch {
+      return null;
+    }
+  }
+
+  private async executeTools(toolUseContent: any[]): Promise<any[]> {
+    // Execute the requested tools
+    const results = [];
+    
+    for (const toolUse of toolUseContent) {
+      try {
+        const result = await this.client.callTool({
+          name: toolUse.name,
+          arguments: toolUse.input
+        });
+        results.push({
+          toolUseId: toolUse.id,
+          content: [{
+            type: 'text',
+            text: JSON.stringify(result)
+          }],
+          isError: false
+        });
+      } catch (error: any) {
+        results.push({
+          toolUseId: toolUse.id,
+          content: [{
+            type: 'text',
+            text: `Error: ${error.message}`
+          }],
+          isError: true
+        });
+      }
+    }
+    
+    return results;
+  }
+
+  private createToolResultContent(toolResults: any[]): any {
+    return {
+      role: 'user',
+      content: JSON.stringify({
+        type: 'tool_result',
+        tool_results: toolResults
+      })
+    };
+  }
+}

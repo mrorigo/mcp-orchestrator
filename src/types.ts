@@ -1,4 +1,5 @@
 import { Tool } from "@modelcontextprotocol/sdk/types.js";
+import { SamplingOptions } from './sampling/types.js';
 
 export interface RegisteredTool extends Tool {
     serverName: string;
@@ -23,6 +24,7 @@ export interface OrchestratorConfig {
         maxReconnectAttempts?: number;
     };
     llm?: any; // To be defined properly in llm/types.ts
+    samplingOptions?: SamplingOptions; // Default sampling options for the orchestrator
 }
 
 export interface HealthCheckResult {
