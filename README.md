@@ -1,15 +1,103 @@
 # MCP Orchestrator
 
-A lightweight TypeScript library for composing and orchestrating [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) servers into domain-specific "experts".
+**A TypeScript library for orchestrating [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) servers with AI agents.**
+
+Compose multiple MCP servers into powerful workflows using traditional tool calling, LLM sampling, or the innovative **code mode** that lets LLMs write and execute TypeScript code for complex operations.
+
+## Why MCP Orchestrator?
+
+### The Code Mode Advantage
+
+While traditional MCP usage exposes tools directly to LLMs through "tool calling" tokens, we offer a better approach for complex workflows:
+
+**Traditional Tool Calling:**
+- ❌ Each tool call requires a full LLM round-trip
+- ❌ LLMs only trained on synthetic tool-calling examples
+- ❌ Intermediate results waste tokens
+- ❌ Complex multi-step operations are inefficient
+
+**Code Mode:**
+- ✅ LLMs write TypeScript code using your tools as an API
+- ✅ Chain multiple operations without LLM round-trips
+- ✅ 60-75% token reduction for multi-step tasks
+- ✅ Generated code is inspectable and reusable
+
+### Flexible Orchestration
+
+Choose the right approach for each task:
+- **Code Mode**: Complex workflows, data transformations, multi-step operations
+- **Tool Calling**: Simple, single-step operations
+- **LLM Sampling**: Dual-level sampling (orchestrator and sub-server)
+- **Composition Patterns**: Sequential, parallel, retry, conditional execution
+
+## Quick Start
+
+```typescript
+import { MCPOrchestrator } from 'mcp-orchestrator';
+import { OpenAIProvider } from 'mcp-orchestrator/llm';
+
+const orchestrator = new MCPOrchestrator({
+  servers: {
+    filesystem: {
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-filesystem', './']
+    },
+    github: {
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-github']
+    }
+  },
+  llm: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY })
+});
+
+await orchestrator.connect();
+
+// Code Mode: Let LLM write and execute code
+const result = await orchestrator.generateAndExecute(
+  'Find all TypeScript files, count lines in each, and return the top 5 largest'
+);
+
+console.log(result.code);   // See generated code
+console.log(result.result); // Get results
+```
+
+**Generated code example:**
+
+```typescript
+const files = await tools.list_directory({ path: './' });
+const tsFiles = files.content.filter(f => f.name.endsWith('.ts'));
+
+const fileSizes = [];
+for (const file of tsFiles) {
+  const content = await tools.read_file({ path: file.path });
+  fileSizes.push({ name: file.name, lines: content.split('\n').length });
+}
+
+return fileSizes.sort((a, b) => b.lines - a.lines).slice(0, 5);
+```
 
 ## Features
 
-- **Type-Safe Tool Calling**: Runtime validation and optional static type generation.
-- **Multi-Server Management**: Connect to multiple MCP servers via Stdio or SSE.
-- **Structured LLM Outputs**: Built-in support for OpenAI and Anthropic with Zod schema validation.
-- **Dual-Level LLM Sampling**: Support for both orchestrator-level and sub-server LLM sampling via MCP protocol.
-- **Expert Composition**: Helper patterns for sequential, parallel, retry, and conditional execution.
-- **Zero-Opinion Orchestration**: Use plain async/await or integrate with any workflow engine (Temporal, etc.).
+### Orchestration Capabilities
+
+- 🌐 **Multi-Server Management**: Connect and coordinate multiple MCP servers (Stdio, HTTP)
+- 🎯 **Flexible Execution**: Choose between code mode, tool calling, or LLM sampling per task
+- 🔄 **Composition Patterns**: Sequential, parallel, retry, and conditional workflows
+- 🛠️ **Type-Safe Tools**: Runtime validation with optional static type generation
+
+### Code Mode
+
+- 🚀 **LLM Code Generation**: AI writes TypeScript code using your tools as an API
+- 🔒 **Secure Sandbox**: VM-based isolation with timeout enforcement
+- 🤖 **Smart Retry**: Automatic error recovery with LLM self-correction
+- 📊 **Token Efficiency**: 60-75% reduction for multi-step operations
+
+### Advanced Features
+
+- 📝 **Structured Outputs**: OpenAI and Anthropic support with Zod validation
+- 🔄 **Dual-Level Sampling**: Orchestrator and sub-server LLM sampling via MCP
+- 🔧 **Zero-Opinion**: Use with any workflow engine or plain async/await
+- 🔐 **Security**: Approval workflows, audit logging, rate limiting
 
 ## Installation
 
@@ -21,33 +109,64 @@ npm run build
 npm run test
 ```
 
-## Basic Usage
+## Direct Code Execution
+
+You can also write and execute your own code directly:
 
 ```typescript
-import { MCPOrchestrator } from 'mcp-orchestrator';
-import { OpenAIProvider } from 'mcp-orchestrator/llm';
+const code = `
+  const files = await tools.list_directory({ path: './' });
+  const tsFiles = files.content.filter(f => f.name.endsWith('.ts'));
+  
+  const fileSizes = [];
+  for (const file of tsFiles) {
+    const content = await tools.read_file({ path: file.path });
+    fileSizes.push({ 
+      name: file.name, 
+      lines: content.split('\\n').length 
+    });
+  }
+  
+  return fileSizes.sort((a, b) => b.lines - a.lines).slice(0, 5);
+`;
 
-const orchestrator = new MCPOrchestrator({
-  servers: {
-    'filesystem': {
-      command: 'npx',
-      args: ['-y', '@modelcontextprotocol/server-filesystem', './']
-    }
-  },
-  llm: new OpenAIProvider({ apiKey: process.env.OPENAI_API_KEY })
-});
-
-await orchestrator.connect();
-
-// Call a tool
-const result = await orchestrator.callTool('list_directory', { path: './' });
-
-// Generate structured output
-const analysis = await orchestrator.llm.generateStructured({
-  schema: z.object({ summary: z.string() }),
-  prompt: `Analyze these files: ${JSON.stringify(result)}`
+const result = await orchestrator.executeCode(code, {
+  timeout: 30000
 });
 ```
+
+## Traditional Tool Calling
+
+For simple, single-step operations, you can still use traditional tool calling:
+
+```typescript
+// Direct tool call
+const files = await orchestrator.callTool('list_directory', { path: './' });
+
+// With structured LLM output
+const analysis = await orchestrator.llm.generateStructured({
+  schema: z.object({ 
+    summary: z.string(),
+    fileCount: z.number()
+  }),
+  prompt: `Analyze these files: ${JSON.stringify(files)}`
+});
+```
+
+### When to Use Each Approach
+
+| Use Code Mode | Use Traditional Tool Calling |
+|---------------|------------------------------|
+| Multi-step workflows | Single tool calls |
+| Complex data transformations | Simple operations |
+| Many tools available | Few tools |
+| Performance matters (60-75% token savings) | Real-time interaction |
+
+📖 **See [docs/code-mode.md](docs/code-mode.md) for comprehensive code mode documentation.**
+
+
+
+
 
 ## Dual-Level LLM Sampling
 
@@ -365,3 +484,9 @@ const result = await retry(
 ## License
 
 MIT
+
+## Support my work
+
+You can support my work by signing up for;
+
+- [Sinay.ai](https://sl1nk.com/origo-ref)

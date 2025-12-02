@@ -30,6 +30,18 @@ import {
     ModelPreferences,
     SamplingCreateMessageRequestSchema
 } from './sampling/types';
+import { CodeExecutor } from './codemode/executor';
+import { APIGenerator } from './codemode/api-generator';
+import {
+    CodeModeOptions,
+    CodeExecutionResult,
+    CodeGenerationOptions
+} from './codemode/types';
+import {
+    CODE_MODE_SYSTEM_PROMPT,
+    buildCodeGenerationPrompt,
+    extractCodeFromResponse
+} from './codemode/prompts';
 
 export class MCPOrchestrator extends EventEmitter {
     public tools: ToolRegistry;
@@ -42,6 +54,7 @@ export class MCPOrchestrator extends EventEmitter {
     private serverSession?: Server;
     private securityManager: SamplingSecurityManager;
     private httpServer?: http.Server;
+    private apiGenerator: APIGenerator;
 
     constructor(config: OrchestratorConfig) {
         super();
@@ -55,6 +68,7 @@ export class MCPOrchestrator extends EventEmitter {
         this.securityManager = new SamplingSecurityManager({
             // requireApproval is handled per-request in SamplingOptions, not in constructor
         });
+        this.apiGenerator = new APIGenerator(this);
 
         if (config.connectionOptions?.autoConnect) {
             this.connect().catch(err => {
@@ -614,5 +628,84 @@ export class MCPOrchestrator extends EventEmitter {
             return (this.llm as any).model || 'unknown';
         }
         return 'unknown';
+    }
+
+    /**
+     * Execute TypeScript code in a sandboxed environment with access to MCP tools
+     */
+    async executeCode(
+        code: string,
+        options?: CodeModeOptions
+    ): Promise<CodeExecutionResult> {
+        const toolsAPI = this.apiGenerator.generateToolsAPI();
+        const executor = new CodeExecutor(toolsAPI, options || {});
+        return executor.execute(code);
+    }
+
+    /**
+     * Generate and execute code using LLM
+     */
+    async generateAndExecute(
+        prompt: string,
+        options?: CodeGenerationOptions
+    ): Promise<CodeExecutionResult> {
+        if (!this.llm) {
+            throw new Error('No LLM provider configured for code generation');
+        }
+
+        // Generate TypeScript API context
+        const apiContext = this.apiGenerator.generateTypeDefinitions();
+
+        // Build full prompt
+        const fullPrompt = buildCodeGenerationPrompt(apiContext, prompt, options);
+
+        // Generate code
+        let codeResponse = await this.llm.generate({
+            prompt: fullPrompt,
+            systemPrompt: options?.systemPrompt || CODE_MODE_SYSTEM_PROMPT,
+            ...options?.llmOptions
+        });
+
+        // Extract code from response (handles markdown code blocks)
+        let code = extractCodeFromResponse(codeResponse);
+
+        // Execute with retries
+        let lastError: string | undefined;
+        const maxRetries = options?.maxRetries ?? 2;
+
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            const result = await this.executeCode(code, options);
+
+            if (result.success) {
+                // Add the generated code to the result
+                return { ...result, code };
+            }
+
+            lastError = result.error;
+
+            // If failed and retries remain, ask LLM to fix
+            if (attempt < maxRetries) {
+                const fixPrompt = `The previous code failed with this error:
+
+${result.error}
+
+Previous code:
+\`\`\`typescript
+${code}
+\`\`\`
+
+Please fix the code to handle this error. Output ONLY the corrected code.`;
+
+                codeResponse = await this.llm.generate({
+                    prompt: fixPrompt,
+                    systemPrompt: options?.systemPrompt || CODE_MODE_SYSTEM_PROMPT,
+                    ...options?.llmOptions
+                });
+
+                code = extractCodeFromResponse(codeResponse);
+            }
+        }
+
+        throw new Error(`Code execution failed after ${maxRetries} retries: ${lastError}`);
     }
 }

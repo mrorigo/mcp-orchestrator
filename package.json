@@ -1,6 +1,6 @@
 {
   "name": "mcp-orchestrator",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "A lightweight library for composing and orchestrating MCP servers into domain-specific experts.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
