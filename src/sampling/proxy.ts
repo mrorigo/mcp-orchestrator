@@ -1,10 +1,10 @@
+import { ZodSchema } from 'zod';
 import { LLMProvider } from '../llm/types.js';
 import {
   SamplingCreateMessageRequest,
   SamplingResult,
   SamplingOptions,
   SamplingMessage,
-  SamplingCapabilityError,
 } from './types.js';
 
 /**
@@ -19,7 +19,7 @@ export class SamplingProxy {
     private llmProvider: LLMProvider,
     private origin: string,
     private defaultOptions: SamplingOptions = {}
-  ) {}
+  ) { }
 
   /**
    * Create a sampling message - main entry point for sub-servers
@@ -27,17 +27,17 @@ export class SamplingProxy {
   async createMessage(request: SamplingCreateMessageRequest, options?: SamplingOptions): Promise<SamplingResult> {
     // Apply default options and merge with provided options
     const mergedOptions = { ...this.defaultOptions, ...options };
-    
+
     // Log the sampling request for debugging/tracking
     this.logSamplingRequest(request, mergedOptions);
 
     try {
       // Convert MCP sampling request to LLM provider format
       const llmRequest = this.convertToLLMRequest(request, mergedOptions);
-      
+
       // Call the LLM provider
       const llmResponse = await this.llmProvider.generate(llmRequest);
-      
+
       // Convert back to sampling result format
       const result: SamplingResult = {
         content: llmResponse,
@@ -49,7 +49,7 @@ export class SamplingProxy {
       this.logSamplingResponse(result, mergedOptions);
 
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Log error and re-throw
       this.logSamplingError(error, request, mergedOptions);
       throw error;
@@ -62,11 +62,11 @@ export class SamplingProxy {
   async createMessageStructured<T>(
     request: SamplingCreateMessageRequest,
     options?: SamplingOptions,
-    schema?: any
+    schema?: ZodSchema<T>
   ): Promise<T> {
     // Apply default options and merge with provided options
     const mergedOptions = { ...this.defaultOptions, ...options };
-    
+
     this.logSamplingRequest(request, mergedOptions);
 
     try {
@@ -80,7 +80,7 @@ export class SamplingProxy {
         // Fallback to regular generation
         return await this.createMessage(request, options) as T;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.logSamplingError(error, request, mergedOptions);
       throw error;
     }
@@ -101,7 +101,7 @@ export class SamplingProxy {
     // Convert MCP sampling request format to LLM provider format
     const messages = this.convertMessages(request.messages);
     const systemPrompt = request.systemPrompt || options.systemPrompt;
-    
+
     return {
       prompt: this.formatPrompt(messages, systemPrompt),
       systemPrompt,
@@ -111,10 +111,10 @@ export class SamplingProxy {
     };
   }
 
-  private convertToStructuredRequest(request: SamplingCreateMessageRequest, schema: any, options: SamplingOptions) {
+  private convertToStructuredRequest(request: SamplingCreateMessageRequest, schema: ZodSchema, options: SamplingOptions) {
     const messages = this.convertMessages(request.messages);
     const systemPrompt = request.systemPrompt || options.systemPrompt;
-    
+
     return {
       prompt: this.formatPrompt(messages, systemPrompt),
       schema: schema,
@@ -137,7 +137,7 @@ export class SamplingProxy {
       const role = msg.role === 'assistant' ? 'Assistant' : 'User';
       return `${role}: ${msg.content}`;
     });
-    
+
     return formattedMessages.join('\n\n');
   }
 
@@ -152,7 +152,7 @@ export class SamplingProxy {
     // Extract model name from the LLM provider
     // This is provider-specific and might need adjustment
     if ('model' in this.llmProvider) {
-      return (this.llmProvider as any).model || 'unknown';
+      return (this.llmProvider as { model?: string }).model || 'unknown';
     }
     return 'unknown';
   }
@@ -177,9 +177,10 @@ export class SamplingProxy {
     });
   }
 
-  private logSamplingError(error: Error, request: SamplingCreateMessageRequest, options: SamplingOptions) {
+  private logSamplingError(error: unknown, request: SamplingCreateMessageRequest, options: SamplingOptions) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`[SamplingProxy:${this.origin}] Sampling error:`, {
-      error: error.message,
+      error: errorMessage,
       messageCount: request.messages.length,
       origin: options.origin || this.origin,
     });

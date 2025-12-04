@@ -1,7 +1,7 @@
 {
-  "name": "mcp-orchestrator",
+  "name": "@mrorigo/mcp-orchestrator",
   "version": "0.2.0",
-  "description": "A lightweight library for composing and orchestrating MCP servers into domain-specific experts.",
+  "description": "Orchestrate MCP servers with Code Mode - let LLMs write TypeScript code for complex workflows. Supports multi-server coordination, secure VM sandboxing, and 60-75% token savings.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -10,6 +10,11 @@
       "require": "./dist/index.js",
       "import": "./dist/index.mjs",
       "types": "./dist/index.d.ts"
+    },
+    "./llm": {
+      "require": "./dist/llm/index.js",
+      "import": "./dist/llm/index.mjs",
+      "types": "./dist/llm/index.d.ts"
     }
   },
   "bin": {
@@ -18,18 +23,46 @@
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "prepublishOnly": "npm run build && npm run test && npm run lint",
+    "generate-types": "node dist/cli/generate-types.js",
     "example:triage": "ts-node examples/support-triage/index.ts"
   },
   "keywords": [
     "mcp",
+    "model-context-protocol",
     "orchestration",
-    "agent",
-    "ai",
-    "llm"
+    "code-mode",
+    "llm",
+    "ai-agents",
+    "typescript",
+    "openai",
+    "anthropic",
+    "workflow",
+    "sandbox",
+    "vm",
+    "tool-calling"
   ],
   "author": "mrorigo@gmail.com",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mrorigo/mcp-orchestrator.git"
+  },
+  "homepage": "https://github.com/mrorigo/mcp-orchestrator#readme",
+  "bugs": {
+    "url": "https://github.com/mrorigo/mcp-orchestrator/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",
     "@modelcontextprotocol/sdk": "^1.11.2",
@@ -40,7 +73,10 @@
   },
   "devDependencies": {
     "@types/node": "^22.9.0",
+    "@typescript-eslint/eslint-plugin": "^8.48.1",
+    "@typescript-eslint/parser": "^8.48.1",
     "@vitest/coverage-v8": "^2.1.9",
+    "eslint": "^9.39.1",
     "ts-node": "^10.9.2",
     "tsup": "^8.5.1",
     "typescript": "^5.6.3",

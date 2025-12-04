@@ -62,31 +62,31 @@ export class CodeExecutor {
     private createConsoleProxy(): Console {
         const self = this;
         return {
-            log(...args: any[]) {
+            log(...args: unknown[]) {
                 const message = args.map(arg =>
                     typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
                 ).join(' ');
                 self.consoleOutput.push(message);
             },
-            error(...args: any[]) {
+            error(...args: unknown[]) {
                 const message = '[ERROR] ' + args.map(arg =>
                     typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
                 ).join(' ');
                 self.consoleOutput.push(message);
             },
-            warn(...args: any[]) {
+            warn(...args: unknown[]) {
                 const message = '[WARN] ' + args.map(arg =>
                     typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
                 ).join(' ');
                 self.consoleOutput.push(message);
             },
-            info(...args: any[]) {
+            info(...args: unknown[]) {
                 const message = '[INFO] ' + args.map(arg =>
                     typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
                 ).join(' ');
                 self.consoleOutput.push(message);
             },
-            debug(...args: any[]) {
+            debug(...args: unknown[]) {
                 const message = '[DEBUG] ' + args.map(arg =>
                     typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
                 ).join(' ');
@@ -129,11 +129,11 @@ ${code}
                 executionTime,
             };
 
-        } catch (error: any) {
+        } catch (error: unknown) {
             const executionTime = Date.now() - startTime;
 
             // Sanitize error message and stack trace
-            let errorMessage = error.message || String(error);
+            let errorMessage = error instanceof Error ? error.message : String(error);
 
             // Check for timeout
             if (errorMessage.includes('Script execution timed out')) {
@@ -141,7 +141,7 @@ ${code}
             }
 
             // Remove internal VM paths from stack trace
-            if (error.stack) {
+            if (error instanceof Error && error.stack) {
                 const stack = error.stack.split('\n')
                     .filter((line: string) => !line.includes('node:vm:') && !line.includes('node:internal'))
                     .join('\n');

@@ -52,17 +52,17 @@ export class OpenAIProvider implements LLMProvider {
                 }
                 return result;
 
-            } catch (error: any) {
-                lastError = error;
+            } catch (error: unknown) {
+                lastError = error instanceof Error ? error : new Error(String(error));
                 if (retry?.onError) {
-                    retry.onError(error, attempt);
+                    retry.onError(lastError, attempt);
                 }
                 // If it's a parse error, we might want to distinguish it
                 if (attempt === maxAttempts) {
                     if (options.fallback) return options.fallback;
                     // Wrap error if it's a parsing issue? 
                     // OpenAI's parse method throws specific errors usually.
-                    throw new LLMParseError(error.message, error);
+                    throw new LLMParseError(lastError.message, lastError);
                 }
             }
         }

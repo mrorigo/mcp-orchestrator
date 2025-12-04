@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { compile } from 'json-schema-to-typescript';
+import { compile, JSONSchema } from 'json-schema-to-typescript';
 import fs from 'fs/promises';
 import path from 'path';
 import { MCPOrchestrator } from '../orchestrator.js';
@@ -45,7 +45,7 @@ async function main() {
 
             // Generate Input Schema
             if (tool.inputSchema) {
-                const inputTs = await compile(tool.inputSchema as any, inputInterfaceName, {
+                const inputTs = await compile(tool.inputSchema as JSONSchema, inputInterfaceName, {
                     bannerComment: '',
                     additionalProperties: false
                 });
@@ -65,7 +65,7 @@ async function main() {
             // If the SDK Tool type doesn't have it, we might need to extend it or check if it's in `...rest`.
             // For now, let's check if it exists, otherwise `any`.
 
-            const outputSchema = (tool as any).outputSchema;
+            const outputSchema = (tool as unknown as { outputSchema?: JSONSchema }).outputSchema;
             if (outputSchema) {
                 const outputTs = await compile(outputSchema, outputInterfaceName, {
                     bannerComment: '',

@@ -23,7 +23,7 @@ export class AnthropicProvider implements LLMProvider {
 
         // Using tool use is the most reliable way for structured output on Claude.
 
-        const toolName = "submit_result";
+
         // We need to convert Zod schema to JSON schema. 
         // For simplicity in this implementation, we'll assume the user might need a library like `zod-to-json-schema`
         // But since we don't want to add too many dependencies, we might try a simpler prompt approach or 
@@ -54,9 +54,9 @@ export class AnthropicProvider implements LLMProvider {
             const text = response.content[0].type === 'text' ? response.content[0].text : '';
             const json = JSON.parse(text); // This is risky without robust extraction
             return schema.parse(json);
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (options.fallback) return options.fallback;
-            throw new LLMParseError("Failed to parse Anthropic output", error);
+            throw new LLMParseError("Failed to parse Anthropic output", error instanceof Error ? error : new Error(String(error)));
         }
     }
 

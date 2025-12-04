@@ -2,7 +2,7 @@ export interface RetryOptions {
     maxAttempts: number;
     backoff?: 'linear' | 'exponential';
     initialDelay?: number;
-    retryIf?: (error: any) => boolean;
+    retryIf?: (error: unknown) => boolean;
 }
 
 export async function retry<T>(
@@ -10,7 +10,7 @@ export async function retry<T>(
     options: RetryOptions
 ): Promise<T> {
     const { maxAttempts, backoff = 'linear', initialDelay = 1000, retryIf } = options;
-    let lastError: any;
+    let lastError: unknown;
 
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {

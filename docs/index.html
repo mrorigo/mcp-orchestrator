@@ -10,6 +10,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inconsolata:wght@400;600&display=swap"
     rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
   <style>
     :root {
       --bg: #050910;
@@ -630,7 +631,7 @@
             <button class="copy" data-copy="npm install @mrorigo/mcp-orchestrator"
               onclick="copyCommand(this)">Copy</button>
           </div>
-          <pre><code>import { MCPOrchestrator } from '@mrorigo/mcp-orchestrator';
+          <pre><code class="language-typescript">import { MCPOrchestrator } from '@mrorigo/mcp-orchestrator';
 import { OpenAIProvider } from '@mrorigo/mcp-orchestrator/llm';
 
 const orchestrator = new MCPOrchestrator({
@@ -679,7 +680,7 @@ console.log(result.result); // Get results</code></pre>
       <div class="columns">
         <div class="panel">
           <div class="pill">Traditional Tool Calling</div>
-          <pre><code>// Each step requires LLM round-trip
+          <pre><code class="language-typescript">// Each step requires LLM round-trip
 User: "Find TypeScript files and count lines"
 
 → LLM: list_directory tool call
@@ -698,7 +699,7 @@ User: "Find TypeScript files and count lines"
 
         <div class="panel">
           <div class="pill">Code Mode</div>
-          <pre><code>// LLM writes code, executes once
+          <pre><code class="language-typescript">// LLM writes code, executes once
 User: "Find TypeScript files and count lines"
 
 → LLM: Generates code
@@ -758,7 +759,7 @@ return sizes.sort((a,b) => b.lines - a.lines).slice(0, 5);
         </div>
         <div class="tab-panels">
           <div class="tab-panel active" id="gen">
-            <pre><code>// Let LLM write and execute code
+            <pre><code class="language-typescript">// Let LLM write and execute code
 const result = await orchestrator.generateAndExecute(
   'Find all JSON files, parse them, and count total keys'
 );
@@ -768,7 +769,7 @@ console.log(result.output); // Console logs from execution
 console.log(result.result); // Final result: { totalKeys: 142, files: 8 }</code></pre>
           </div>
           <div class="tab-panel" id="direct">
-            <pre><code>// Write your own code to execute
+            <pre><code class="language-typescript">// Write your own code to execute
 const code = `
   const files = await tools.list_directory({ path: './' });
   const jsonFiles = files.content.filter(f => f.name.endsWith('.json'));
@@ -786,7 +787,7 @@ const code = `
 const result = await orchestrator.executeCode(code, { timeout: 30000 });</code></pre>
           </div>
           <div class="tab-panel" id="traditional">
-            <pre><code>// Traditional tool calling (still supported for simple tasks)
+            <pre><code class="language-typescript">// Traditional tool calling (still supported for simple tasks)
 const files = await orchestrator.callTool('list_directory', { path: './' });
 
 // Use for single-step operations
@@ -837,6 +838,17 @@ const analysis = await orchestrator.llm.generateStructured({
           <p>Approval workflows, rate limits, audit logging, and policy hooks keep LLM operations safe in production.
           </p>
         </div>
+        <div class="card">
+          <div class="icon">📈</div>
+          <strong>Performance Monitoring</strong>
+          <p>Track token usage, execution times, and success rates. Built-in metrics for optimizing your workflows.</p>
+        </div>
+        <div class="card">
+          <div class="icon">🎨</div>
+          <strong>Developer Experience</strong>
+          <p>Intuitive API design, comprehensive TypeScript support, and detailed error messages for rapid development.
+          </p>
+        </div>
       </div>
     </section>
 
@@ -852,7 +864,7 @@ const analysis = await orchestrator.llm.generateStructured({
         </div>
         <div class="tab-panels">
           <div class="tab-panel active" id="seq">
-            <pre><code>const result = await orchestrator.execute('sequential', {
+            <pre><code class="language-typescript">const result = await orchestrator.execute('sequential', {
   steps: [
     { tool: 'list_directory', params: { path: './data' } },
     { llm: { prompt: 'Summarize these files', schema: summarySchema } },
@@ -861,7 +873,7 @@ const analysis = await orchestrator.llm.generateStructured({
 });</code></pre>
           </div>
           <div class="tab-panel" id="par">
-            <pre><code>const results = await orchestrator.execute('parallel', {
+            <pre><code class="language-typescript">const results = await orchestrator.execute('parallel', {
   tasks: [
     { tool: 'search_files', params: { pattern: 'error' } },
     { tool: 'run_command', params: { cmd: 'ps aux' } },
@@ -870,14 +882,14 @@ const analysis = await orchestrator.llm.generateStructured({
 });</code></pre>
           </div>
           <div class="tab-panel" id="cond">
-            <pre><code>const result = await orchestrator.execute('conditional', {
+            <pre><code class="language-typescript">const result = await orchestrator.execute('conditional', {
   condition: { tool: 'check_status', threshold: 0.8 },
   ifTrue: { llm: { prompt: 'Process success result' } },
   ifFalse: { llm: { prompt: 'Handle failure case' } }
 });</code></pre>
           </div>
           <div class="tab-panel" id="retry">
-            <pre><code>const result = await orchestrator.execute('retry', {
+            <pre><code class="language-typescript">const result = await orchestrator.execute('retry', {
   task: { tool: 'unreliable_api' },
   maxAttempts: 3,
   backoff: 'exponential'
@@ -959,6 +971,14 @@ const analysis = await orchestrator.llm.generateStructured({
           el.textContent = 'Copy';
         }, 1200);
       });
+    }
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+  <script>
+    // Ensure Prism highlights all code blocks after loading
+    if (typeof Prism !== 'undefined') {
+      Prism.highlightAll();
     }
   </script>
 </body>

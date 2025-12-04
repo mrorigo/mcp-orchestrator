@@ -25,7 +25,7 @@ export interface CodeExecutionResult {
     /** Console.log outputs captured during execution */
     output: string[];
     /** Return value from the code */
-    result?: any;
+    result?: unknown;
     /** Error message if execution failed */
     error?: string;
     /** Execution time in milliseconds */
@@ -58,5 +58,5 @@ export interface CodeExecutorOptions {
  * Tools API object passed to sandbox
  */
 export interface ToolsAPI {
-    [toolName: string]: (input: any) => Promise<any>;
+    [toolName: string]: (input: Record<string, unknown>) => Promise<unknown>;
 }

@@ -1,4 +1,4 @@
-import { CodeGenerationOptions } from './types';
+import { } from './types';
 
 /**
  * System prompt for code mode LLM generation

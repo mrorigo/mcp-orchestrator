@@ -8,7 +8,35 @@ import {
   SamplingCapabilityError,
   SamplingTimeoutError,
   SamplingRejectedError,
+  Tool,
+  SamplingMessage,
 } from './types';
+
+interface ToolUse {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+}
+
+interface ToolResult {
+  toolUseId: string;
+  content: { type: 'text'; text: string }[];
+  isError: boolean;
+}
+
+interface MCPError {
+  code: string;
+  details?: {
+    reason?: string;
+  };
+}
+
+interface ClientWithSampling {
+  getServerCapabilities?(): { sampling?: boolean };
+  sampling?: {
+    createMessage?(request: SamplingCreateMessageRequest): Promise<SamplingMessageResponse>;
+  };
+}
 
 export class SamplingClient {
   constructor(private client: Client) { }
@@ -21,7 +49,7 @@ export class SamplingClient {
 
     // Check if the server supports sampling
     // In MCP SDK, we can check the server capabilities exposed on the client
-    const serverCapabilities = (this.client as any).getServerCapabilities?.();
+    const serverCapabilities = (this.client as unknown as ClientWithSampling).getServerCapabilities?.();
 
     if (serverCapabilities?.sampling) {
       capabilities.sampling = true;
@@ -61,10 +89,10 @@ export class SamplingClient {
         model: response.model,
         stopReason: response.stopReason,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle specific sampling errors
-      if (error?.code === 'REQUEST_REJECTED') {
-        throw new SamplingRejectedError(error.details?.reason);
+      if (typeof error === 'object' && error !== null && 'code' in error && (error as MCPError).code === 'REQUEST_REJECTED') {
+        throw new SamplingRejectedError((error as MCPError).details?.reason);
       }
       throw error;
     }
@@ -74,7 +102,7 @@ export class SamplingClient {
    * Create a message with tool support
    */
   async createMessageWithTools(
-    request: SamplingCreateMessageRequest & { tools: any[] },
+    request: SamplingCreateMessageRequest & { tools: Tool[] },
     options?: SamplingOptions
   ): Promise<SamplingResult> {
     // Check if tool sampling is supported
@@ -101,7 +129,7 @@ export class SamplingClient {
   private async makeSamplingRequest(request: SamplingCreateMessageRequest): Promise<SamplingMessageResponse> {
     // Use the MCP client's sampling method
     // This assumes the MCP SDK has a sampling.createMessage method
-    const result = await (this.client as any).sampling?.createMessage?.(request);
+    const result = await (this.client as unknown as ClientWithSampling).sampling?.createMessage?.(request);
 
     if (!result) {
       throw new SamplingCapabilityError('sampling');
@@ -111,7 +139,7 @@ export class SamplingClient {
   }
 
   private async handleToolLoop(
-    request: SamplingCreateMessageRequest & { tools: any[] },
+    request: SamplingCreateMessageRequest & { tools: Tool[] },
     options?: SamplingOptions
   ): Promise<SamplingResult> {
     // Handle the tool-enabled sampling loop as per MCP spec
@@ -158,7 +186,7 @@ export class SamplingClient {
     throw new Error('Tool loop exceeded maximum iterations');
   }
 
-  private extractToolUseContent(content: string): any[] | null {
+  private extractToolUseContent(content: string): ToolUse[] | null {
     // Parse content to extract ToolUseContent
     // This is a simplified implementation
     try {
@@ -169,7 +197,7 @@ export class SamplingClient {
     }
   }
 
-  private async executeTools(toolUseContent: any[]): Promise<any[]> {
+  private async executeTools(toolUseContent: ToolUse[]): Promise<ToolResult[]> {
     // Execute the requested tools
     const results = [];
 
@@ -187,12 +215,13 @@ export class SamplingClient {
           }],
           isError: false
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         results.push({
           toolUseId: toolUse.id,
           content: [{
             type: 'text',
-            text: `Error: ${error.message}`
+            text: `Error: ${errorMessage}`
           }],
           isError: true
         });
@@ -202,7 +231,7 @@ export class SamplingClient {
     return results;
   }
 
-  private createToolResultContent(toolResults: any[]): any {
+  private createToolResultContent(toolResults: ToolResult[]): SamplingMessage {
     return {
       role: 'user',
       content: JSON.stringify({

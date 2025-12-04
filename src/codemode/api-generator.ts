@@ -1,5 +1,6 @@
 import { MCPOrchestrator } from '../orchestrator';
 import { ToolsAPI } from './types';
+import { JSONSchema } from 'json-schema-to-typescript';
 
 /**
  * Generates runtime TypeScript API from registered MCP tools
@@ -15,7 +16,7 @@ export class APIGenerator {
 
         for (const tool of this.orchestrator.tools.list()) {
             // Create async wrapper function for each tool
-            tools[tool.name] = async (input: any) => {
+            tools[tool.name] = async (input: Record<string, unknown>) => {
                 return this.orchestrator.callTool(tool.name, input);
             };
         }
@@ -37,7 +38,7 @@ export class APIGenerator {
 
         // Generate interface for each tool
         for (const tool of tools) {
-            const inputSchema = tool.inputSchema as any;
+            const inputSchema = tool.inputSchema as JSONSchema;
 
             // Generate input type
             const inputTypeName = this.toPascalCase(tool.name) + 'Input';
@@ -47,7 +48,7 @@ export class APIGenerator {
             // Generate tool function signature with JSDoc
             const jsdoc = this.generateJSDoc(tool.description || '', inputSchema);
             definitions.push(jsdoc);
-            definitions.push(`${tool.name}: (input: ${inputTypeName}) => Promise<any>;`);
+            definitions.push(`${tool.name}: (input: ${inputTypeName}) => Promise<unknown>;`);
             definitions.push('');
         }
 
@@ -67,22 +68,22 @@ declare const tools: Tools;
     /**
      * Convert JSON Schema to TypeScript interface
      */
-    private schemaToTypeScript(schema: any, typeName: string): string {
+    private schemaToTypeScript(schema: JSONSchema, typeName: string): string {
         if (!schema || !schema.properties) {
-            return `interface ${typeName} {\n  [key: string]: any;\n}`;
+            return `interface ${typeName} {\n  [key: string]: unknown;\n}`;
         }
 
         const properties: string[] = [];
         const required = schema.required || [];
 
-        for (const [propName, propSchema] of Object.entries(schema.properties as any)) {
-            const isRequired = required.includes(propName);
+        for (const [propName, propSchema] of Object.entries(schema.properties || {})) {
+            const isRequired = Array.isArray(required) ? required.includes(propName) : false;
             const optional = isRequired ? '' : '?';
-            const type = this.jsonSchemaTypeToTS(propSchema as any);
+            const type = this.jsonSchemaTypeToTS(propSchema as JSONSchema);
 
             // Add description as comment if available
-            if ((propSchema as any).description) {
-                properties.push(`  /** ${(propSchema as any).description} */`);
+            if ((propSchema as JSONSchema).description) {
+                properties.push(`  /** ${(propSchema as JSONSchema).description} */`);
             }
 
             properties.push(`  ${propName}${optional}: ${type};`);
@@ -94,7 +95,7 @@ declare const tools: Tools;
     /**
      * Convert JSON Schema type to TypeScript type
      */
-    private jsonSchemaTypeToTS(schema: any): string {
+    private jsonSchemaTypeToTS(schema: JSONSchema): string {
         if (!schema.type) {
             return 'any';
         }
@@ -102,7 +103,7 @@ declare const tools: Tools;
         switch (schema.type) {
             case 'string':
                 if (schema.enum) {
-                    return schema.enum.map((v: string) => `'${v}'`).join(' | ');
+                    return schema.enum.map((v: unknown) => `'${v}'`).join(' | ');
                 }
                 return 'string';
             case 'number':
@@ -111,19 +112,19 @@ declare const tools: Tools;
             case 'boolean':
                 return 'boolean';
             case 'array':
-                const itemType = schema.items ? this.jsonSchemaTypeToTS(schema.items) : 'any';
+                const itemType = schema.items ? this.jsonSchemaTypeToTS(schema.items as JSONSchema) : 'unknown';
                 return `${itemType}[]`;
             case 'object':
-                return 'Record<string, any>';
+                return 'Record<string, unknown>';
             default:
-                return 'any';
+                return 'unknown';
         }
     }
 
     /**
      * Generate JSDoc comment for a tool
      */
-    private generateJSDoc(description: string, schema: any): string {
+    private generateJSDoc(description: string, schema: JSONSchema): string {
         const lines = ['/**'];
 
         if (description) {
@@ -132,9 +133,9 @@ declare const tools: Tools;
 
         if (schema?.properties) {
             lines.push(' *');
-            for (const [propName, propSchema] of Object.entries(schema.properties as any)) {
-                if ((propSchema as any).description) {
-                    lines.push(` * @param input.${propName} - ${(propSchema as any).description}`);
+            for (const [propName, propSchema] of Object.entries(schema.properties || {})) {
+                if ((propSchema as JSONSchema).description) {
+                    lines.push(` * @param input.${propName} - ${(propSchema as JSONSchema).description}`);
                 }
             }
         }

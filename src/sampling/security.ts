@@ -1,5 +1,5 @@
 import { EventEmitter } from "events";
-import { SamplingCreateMessageRequest, SamplingResult, SamplingOptions } from './types.js';
+import { SamplingCreateMessageRequest, SamplingOptions } from './types.js';
 
 /**
  * Security and Trust Manager for MCP Sampling
@@ -176,11 +176,13 @@ export class SamplingSecurityManager extends EventEmitter {
             if (filter.eventType) {
                 filteredLog = filteredLog.filter(entry => entry.eventType === filter.eventType);
             }
-            if (filter.startTime) {
-                filteredLog = filteredLog.filter(entry => entry.timestamp >= filter.startTime!);
+            const startTime = filter.startTime;
+            if (startTime !== undefined) {
+                filteredLog = filteredLog.filter(entry => entry.timestamp >= startTime);
             }
-            if (filter.endTime) {
-                filteredLog = filteredLog.filter(entry => entry.timestamp <= filter.endTime!);
+            const endTime = filter.endTime;
+            if (endTime !== undefined) {
+                filteredLog = filteredLog.filter(entry => entry.timestamp <= endTime);
             }
         }
 
@@ -238,10 +240,12 @@ export class SamplingSecurityManager extends EventEmitter {
         }
 
         // Update counters
-        const tracker = this.rateLimits.get(origin)!;
-        tracker.requestsThisMinute++;
-        tracker.requestsThisHour++;
-        tracker.requestsThisDay++;
+        const tracker = this.rateLimits.get(origin);
+        if (tracker) {
+            tracker.requestsThisMinute++;
+            tracker.requestsThisHour++;
+            tracker.requestsThisDay++;
+        }
     }
 
     private async applyPolicies(
@@ -258,7 +262,7 @@ export class SamplingSecurityManager extends EventEmitter {
         return { approved: true };
     }
 
-    private getRateLimitConfig(origin: string): RateLimitConfig {
+    private getRateLimitConfig(_origin: string): RateLimitConfig {
         // In a real implementation, you'd have per-origin configs
         // For now, return the default
         return this.defaultRateLimit;
@@ -332,7 +336,7 @@ export class SamplingSecurityManager extends EventEmitter {
         return `approval_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     }
 
-    private logEvent(eventType: string, data: any): void {
+    private logEvent(eventType: string, data: Record<string, unknown> & { context?: ApprovalContext }): void {
         const entry: AuditEntry = {
             id: `audit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             eventType,
@@ -372,7 +376,7 @@ export interface ApprovalContext {
     origin: string;
     userId?: string;
     sessionId?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
 }
 
 export interface ApprovalResult {
@@ -414,7 +418,7 @@ export interface AuditEntry {
     id: string;
     eventType: string;
     timestamp: number;
-    data: any;
+    data: unknown;
     context?: ApprovalContext;
 }
 
