@@ -1,6 +1,6 @@
 {
   "name": "@mrorigo/mcp-orchestrator",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Orchestrate MCP servers with Code Mode - let LLMs write TypeScript code for complex workflows. Supports multi-server coordination, secure VM sandboxing, and 60-75% token savings.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -65,7 +65,7 @@
   ],
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",
-    "@modelcontextprotocol/sdk": "^1.11.2",
+    "@modelcontextprotocol/sdk": "^1.24.3",
     "commander": "^14.0.2",
     "json-schema-to-typescript": "^15.0.4",
     "openai": "^4.73.0",

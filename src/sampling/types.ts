@@ -13,7 +13,7 @@ export const SamplingMessageSchema = z.object({
 });
 
 export const ModelPreferencesSchema = z.object({
-  hints: z.array(z.string()).optional(),
+  hints: z.array(z.union([z.string(), z.object({ name: z.string().optional() })])).optional(),
   intelligencePriority: z.number().min(0).max(1).optional(),
   speedPriority: z.number().min(0).max(1).optional(),
   costPriority: z.number().min(0).max(1).optional(),

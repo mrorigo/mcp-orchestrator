@@ -563,7 +563,12 @@ export class MCPOrchestrator extends EventEmitter {
 
     private mapModelPreferences(prefs: ModelPreferences) {
         // Simple mapping: use the first hint if available
-        return prefs.hints?.[0] ? { model: prefs.hints[0] } : {};
+        if (prefs.hints?.[0]) {
+            const hint = prefs.hints[0];
+            const modelName = typeof hint === 'string' ? hint : hint.name;
+            return modelName ? { model: modelName } : {};
+        }
+        return {};
     }
 
     /**
