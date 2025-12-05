@@ -38,9 +38,13 @@ export class SamplingProxy {
       // Call the LLM provider
       const llmResponse = await this.llmProvider.generate(llmRequest);
 
-      // Convert back to sampling result format
+      // Convert back to sampling result format - MCP SDK compliant
       const result: SamplingResult = {
-        content: llmResponse,
+        role: 'assistant',
+        content: {
+          type: 'text',
+          text: llmResponse
+        },
         model: this.getModelName(),
         stopReason: 'stop',
       };
@@ -74,7 +78,12 @@ export class SamplingProxy {
       if (schema) {
         const structuredRequest = this.convertToStructuredRequest(request, schema, mergedOptions);
         const result = await this.llmProvider.generateStructured(structuredRequest) as T;
-        this.logSamplingResponse({ content: JSON.stringify(result), model: this.getModelName(), stopReason: 'stop' } as SamplingResult, mergedOptions);
+        this.logSamplingResponse({
+          role: 'assistant',
+          content: { type: 'text', text: JSON.stringify(result) },
+          model: this.getModelName(),
+          stopReason: 'stop'
+        }, mergedOptions);
         return result;
       } else {
         // Fallback to regular generation
@@ -169,8 +178,13 @@ export class SamplingProxy {
   }
 
   private logSamplingResponse(result: SamplingResult, options: SamplingOptions) {
+    // Calculate content length - handle both single ContentBlock and array
+    const contentLength = Array.isArray(result.content)
+      ? result.content.reduce((sum, block) => sum + (block.type === 'text' ? block.text.length : 0), 0)
+      : result.content.type === 'text' ? result.content.text.length : 0;
+
     console.log(`[SamplingProxy:${this.origin}] Sampling response:`, {
-      contentLength: result.content.length,
+      contentLength,
       model: result.model,
       stopReason: result.stopReason,
       origin: options.origin || this.origin,

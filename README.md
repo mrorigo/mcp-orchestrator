@@ -102,11 +102,7 @@ return fileSizes.sort((a, b) => b.lines - a.lines).slice(0, 5);
 ## Installation
 
 ```bash
-git clone git@github.com:mrorigo/mcp-orchestrator.git
-cd mcp-orchestrator
-npm install
-npm run build
-npm run test
+npm install mcp-orchestrator-ts
 ```
 
 ## Direct Code Execution

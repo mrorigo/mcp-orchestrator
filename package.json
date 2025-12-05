@@ -1,5 +1,5 @@
 {
-  "name": "@mrorigo/mcp-orchestrator",
+  "name": "mcp-orchestrator-ts",
   "version": "0.3.0",
   "description": "Orchestrate MCP servers with Code Mode - let LLMs write TypeScript code for complex workflows. Supports multi-server coordination, secure VM sandboxing, and 60-75% token savings.",
   "main": "./dist/index.js",

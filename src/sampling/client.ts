@@ -85,6 +85,7 @@ export class SamplingClient {
       ]);
 
       return {
+        role: response.role,
         content: response.content,
         model: response.model,
         stopReason: response.stopReason,
@@ -160,6 +161,7 @@ export class SamplingClient {
       if (!toolUseContent) {
         // No tool calls, return the final response
         return {
+          role: response.role,
           content: response.content,
           model: response.model,
           stopReason: response.stopReason,
@@ -173,11 +175,19 @@ export class SamplingClient {
       const toolResultContent = this.createToolResultContent(toolResults);
 
       // Continue the conversation with tool results
+      // Convert SamplingResult to SamplingMessage for the messages array
+      const assistantMessage: SamplingMessage = {
+        role: response.role,
+        content: Array.isArray(response.content)
+          ? response.content.find(block => block.type === 'text')?.text || ''
+          : response.content.type === 'text' ? response.content.text : ''
+      };
+
       currentRequest = {
         ...currentRequest,
         messages: [
           ...currentRequest.messages,
-          response,
+          assistantMessage,
           toolResultContent
         ]
       };
@@ -186,11 +196,22 @@ export class SamplingClient {
     throw new Error('Tool loop exceeded maximum iterations');
   }
 
-  private extractToolUseContent(content: string): ToolUse[] | null {
+  private extractToolUseContent(content: SamplingResult['content']): ToolUse[] | null {
     // Parse content to extract ToolUseContent
     // This is a simplified implementation
     try {
-      const parsed = JSON.parse(content);
+      // Extract text from ContentBlock(s)
+      let textContent = '';
+      if (Array.isArray(content)) {
+        const textBlock = content.find(block => block.type === 'text');
+        textContent = textBlock?.type === 'text' ? textBlock.text : '';
+      } else if (content.type === 'text') {
+        textContent = content.text;
+      }
+
+      if (!textContent) return null;
+
+      const parsed = JSON.parse(textContent);
       return parsed.toolUse || null;
     } catch {
       return null;

@@ -488,10 +488,15 @@ export class MCPOrchestrator extends EventEmitter {
 
                     const result = await this.handleSubSampling(samplingRequest);
 
+                    // Extract text from the structured content
+                    const textContent = Array.isArray(result.content)
+                        ? result.content.find(block => block.type === 'text')?.text || ''
+                        : result.content.type === 'text' ? result.content.text : '';
+
                     return {
                         content: [{
                             type: "text",
-                            text: result.content
+                            text: textContent
                         }]
                     };
                 }
@@ -535,9 +540,13 @@ export class MCPOrchestrator extends EventEmitter {
             ...llmOptions
         });
 
-        // 5. Return spec response
+        // 5. Return spec response - MCP SDK compliant
         return {
-            content,
+            role: 'assistant',
+            content: {
+                type: 'text',
+                text: content
+            },
             model: this.getLLMModelName(),
             stopReason: 'stop',
             // usage: { ... } // Add usage if available from LLM provider
@@ -607,7 +616,11 @@ export class MCPOrchestrator extends EventEmitter {
             });
 
             return {
-                content,
+                role: 'assistant',
+                content: {
+                    type: 'text',
+                    text: content
+                },
                 model: this.getLLMModelName(),
                 stopReason: 'stop',
             };
