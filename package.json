@@ -7,14 +7,14 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
-      "import": "./dist/index.mjs",
-      "types": "./dist/index.d.ts"
+      "import": "./dist/index.mjs"
     },
     "./llm": {
+      "types": "./dist/llm/index.d.ts",
       "require": "./dist/llm/index.js",
-      "import": "./dist/llm/index.mjs",
-      "types": "./dist/llm/index.d.ts"
+      "import": "./dist/llm/index.mjs"
     }
   },
   "bin": {

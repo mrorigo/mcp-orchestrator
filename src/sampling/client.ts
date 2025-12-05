@@ -210,7 +210,7 @@ export class SamplingClient {
         results.push({
           toolUseId: toolUse.id,
           content: [{
-            type: 'text',
+            type: 'text' as const,
             text: JSON.stringify(result)
           }],
           isError: false
@@ -220,7 +220,7 @@ export class SamplingClient {
         results.push({
           toolUseId: toolUse.id,
           content: [{
-            type: 'text',
+            type: 'text' as const,
             text: `Error: ${errorMessage}`
           }],
           isError: true

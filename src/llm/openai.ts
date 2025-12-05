@@ -5,6 +5,7 @@ import { LLMParseError } from '../errors';
 
 export interface OpenAIProviderConfig {
     apiKey: string;
+    baseURL?: string;
     model?: string;
     defaultOptions?: {
         temperature?: number;
@@ -18,7 +19,10 @@ export class OpenAIProvider implements LLMProvider {
     private defaultOptions: Required<OpenAIProviderConfig>['defaultOptions'];
 
     constructor(config: OpenAIProviderConfig) {
-        this.client = new OpenAI({ apiKey: config.apiKey });
+        this.client = new OpenAI({
+            apiKey: config.apiKey,
+            baseURL: config.baseURL || process.env.OPENAI_BASE_URL
+        });
         this.model = config.model || 'gpt-4o';
         this.defaultOptions = {
             temperature: 0.7,
