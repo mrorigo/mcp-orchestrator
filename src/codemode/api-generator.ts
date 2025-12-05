@@ -17,7 +17,14 @@ export class APIGenerator {
         for (const tool of this.orchestrator.tools.list()) {
             // Create async wrapper function for each tool
             tools[tool.name] = async (input: Record<string, unknown>) => {
-                return this.orchestrator.callTool(tool.name, input);
+                const result = await this.orchestrator.callTool(tool.name, input);
+                // Check if result is an error and throw if so
+                if ((result as any).isError) {
+                    const content = (result as any).content || [];
+                    const message = content.map((c: any) => c.text || '').join('\n') || 'Tool execution failed';
+                    throw new Error(message);
+                }
+                return result;
             };
         }
 

@@ -2,15 +2,18 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { MCPOrchestrator } from '../src/orchestrator';
 import { OpenAIProvider } from '../src/llm/openai';
 
+import path from 'path';
+
 describe('Code Mode Integration', () => {
     let orchestrator: MCPOrchestrator;
 
     beforeEach(async () => {
+        const mockServerPath = path.join(process.cwd(), 'tests', 'mock-server.ts');
         orchestrator = new MCPOrchestrator({
             servers: {
                 filesystem: {
                     command: 'npx',
-                    args: ['-y', '@modelcontextprotocol/server-filesystem', './']
+                    args: ['ts-node', mockServerPath]
                 }
             },
             llm: new OpenAIProvider({
@@ -215,7 +218,6 @@ This will list the files.
             `;
 
             const result = await orchestrator.executeCode(code);
-
             expect(result.success).toBe(true);
             expect(result.result).toHaveProperty('name');
             expect(result.result).toHaveProperty('totalDeps');
