@@ -36,13 +36,30 @@ export const SamplingCreateMessageRequestSchema = z.object({
   toolChoice: z.union([z.string(), z.object({ type: z.literal('tool'), toolName: z.string() })]).optional(),
 });
 
+// Content block types matching MCP SDK spec
+export const TextContentSchema = z.object({
+  type: z.literal('text'),
+  text: z.string(),
+});
+
+export const ImageContentSchema = z.object({
+  type: z.literal('image'),
+  data: z.string(),
+  mimeType: z.string(),
+});
+
+export const ContentBlockSchema = z.union([TextContentSchema, ImageContentSchema]);
+
 export const SamplingMessageResponseSchema = z.object({
   role: z.enum(['user', 'assistant']),
-  content: z.string(),
+  content: z.union([ContentBlockSchema, z.array(ContentBlockSchema)]),
   model: z.string(),
   stopReason: z.string(),
 });
 
+export type TextContent = z.infer<typeof TextContentSchema>;
+export type ImageContent = z.infer<typeof ImageContentSchema>;
+export type ContentBlock = z.infer<typeof ContentBlockSchema>;
 export type SamplingMessage = z.infer<typeof SamplingMessageSchema>;
 export type ModelPreferences = z.infer<typeof ModelPreferencesSchema>;
 export type Tool = z.infer<typeof ToolSchema>;
@@ -65,9 +82,10 @@ export interface SamplingOptions {
   origin?: string; // For sub-server sampling tracking
 }
 
-// Sampling result
+// Sampling result - matches MCP SDK CreateMessageResult structure
 export interface SamplingResult {
-  content: string;
+  role: 'user' | 'assistant';
+  content: ContentBlock | ContentBlock[];
   model: string;
   stopReason: string;
   usage?: {
