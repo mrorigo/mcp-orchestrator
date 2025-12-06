@@ -628,11 +628,10 @@
         <div class="code-card">
           <div class="code-head">
             <span id="install">Quick Start</span>
-            <button class="copy" data-copy="npm install @mrorigo/mcp-orchestrator"
-              onclick="copyCommand(this)">Copy</button>
+            <button class="copy" data-copy="npm install mcp-orchestrator-ts" onclick="copyCommand(this)">Copy</button>
           </div>
-          <pre><code class="language-typescript">import { MCPOrchestrator } from '@mrorigo/mcp-orchestrator';
-import { OpenAIProvider } from '@mrorigo/mcp-orchestrator/llm';
+          <pre><code class="language-typescript">import { MCPOrchestrator } from 'mcp-orchestrator-ts';
+import { OpenAIProvider } from 'mcp-orchestrator-ts/llm';
 
 const orchestrator = new MCPOrchestrator({
   servers: {
@@ -906,7 +905,7 @@ const analysis = await orchestrator.llm.generateStructured({
         <div class="timeline-card" data-step="01">
           <strong>Install & wire servers</strong>
           <p class="muted">Connect to filesystem, APIs, or custom MCP servers over Stdio or HTTP.</p>
-          <small>npm install @mrorigo/mcp-orchestrator</small>
+          <small>npm install mcp-orchestrator-ts</small>
         </div>
         <div class="timeline-card" data-step="02">
           <strong>Choose execution mode</strong>
@@ -936,8 +935,8 @@ const analysis = await orchestrator.llm.generateStructured({
       </div>
       <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
         <button class="solid-btn"
-          onclick="window.open('https://www.npmjs.com/package/@mrorigo/mcp-orchestrator','_blank')">npm
-          install @mrorigo/mcp-orchestrator</button>
+          onclick="window.open('https://www.npmjs.com/package/mcp-orchestrator-ts','_blank')">npm
+          install mcp-orchestrator-ts</button>
         <button class="ghost-btn" onclick="window.open('https://github.com/mrorigo/mcp-orchestrator','_blank')">View on
           GitHub</button>
       </div>
