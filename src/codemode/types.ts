@@ -14,6 +14,10 @@ export interface CodeModeOptions {
     allowedModules?: string[];
     /** Capture console output (default: true) */
     captureConsole?: boolean;
+    /** Whether to save successful execution as a snippet */
+    saveToSnippets?: boolean;
+    /** Arguments for the code execution (available as global 'args') */
+    args?: Record<string, unknown>;
 }
 
 /**
@@ -32,6 +36,12 @@ export interface CodeExecutionResult {
     executionTime: number;
     /** Generated code (if applicable) */
     code?: string;
+    /** Extracted snippet name */
+    name?: string;
+    /** Extracted snippet description */
+    description?: string;
+    /** Extracted input schema */
+    inputSchema?: Record<string, unknown>;
 }
 
 /**
@@ -52,6 +62,8 @@ export interface CodeGenerationOptions extends CodeModeOptions {
 export interface CodeExecutorOptions {
     timeout?: number;
     captureConsole?: boolean;
+    /** Arguments to pass to the global 'args' object */
+    args?: Record<string, unknown>;
 }
 
 /**
@@ -59,4 +71,15 @@ export interface CodeExecutorOptions {
  */
 export interface ToolsAPI {
     [toolName: string]: (input: Record<string, unknown>) => Promise<unknown>;
+}
+
+/**
+ * Saved code snippet
+ */
+export interface Snippet {
+    name: string;
+    description: string;
+    code: string;
+    inputSchema?: Record<string, unknown>;
+    createdAt: string;
 }

@@ -15,6 +15,19 @@ IMPORTANT RULES:
 7. Do NOT use require(), import, or any Node.js modules - only use the provided tools
 8. Keep code simple and focused on the task
 
+9. To make this code reusable as a tool:
+    - Add // @name: tool-name
+    - Add // @description: Description of what it does
+    - Add // @input: JSON_SCHEMA_FOR_ARGS
+    - Access arguments via the global 'args' variable
+10. Example with args:
+    // @name: list-ts-files
+    // @description: Lists typescript files in a directory
+    // @input: {"type":"object","properties":{"dir":{"type":"string"}}}
+    const { dir } = args || {};
+    const files = await tools.list_directory({ path: dir || './' });
+    ...
+
 Your code will be executed in a sandboxed environment with access only to the tools provided.`;
 
 /**
@@ -103,4 +116,35 @@ export function extractCodeFromResponse(response: string): string {
 
     // If no code block, return the whole response trimmed
     return response.trim();
+}
+
+/**
+ * Extract snippet metadata from code comments
+ */
+export function extractSnippetMetadata(code: string): { name?: string; description?: string; inputSchema?: Record<string, unknown> } {
+    const metadata: { name?: string; description?: string; inputSchema?: Record<string, unknown> } = {};
+
+    // Extract name
+    const nameMatch = code.match(/\/\/\s*@name:\s*([a-zA-Z0-9_-]+)/);
+    if (nameMatch) {
+        metadata.name = nameMatch[1].trim();
+    }
+
+    // Extract description
+    const descMatch = code.match(/\/\/\s*@description:\s*(.+)/);
+    if (descMatch) {
+        metadata.description = descMatch[1].trim();
+    }
+
+    // Extract input schema
+    const inputMatch = code.match(/\/\/\s*@input:\s*(.+)/);
+    if (inputMatch) {
+        try {
+            metadata.inputSchema = JSON.parse(inputMatch[1].trim());
+        } catch (e) {
+            console.warn('Failed to parse input schema from comment:', e);
+        }
+    }
+
+    return metadata;
 }

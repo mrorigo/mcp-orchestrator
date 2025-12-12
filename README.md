@@ -129,6 +129,46 @@ const code = `
 const result = await orchestrator.executeCode(code, {
   timeout: 30000
 });
+});
+```
+
+## Snippet System (Code Reuse)
+
+Promote useful "Code Mode" scripts to first-class MCP tools automatically.
+
+### 1. Enable Snippet Mode
+Set environment variables:
+```bash
+ENABLE_SNIPPET_MODE=true
+SNIPPET_STORAGE_PATH=./snippets  # Optional, defaults to ./snippets
+```
+
+### 2. Create a Snippet
+Instruct the LLM to include metadata comments in the generated code:
+
+```typescript
+// @name: my-tool-name
+// @description: A description of what the tool does
+// @input: {"type": "object", "properties": {"arg1": {"type": "string"}}}
+
+// Your code using 'args'
+console.log(args.arg1);
+```
+
+### 3. Use the Snippet
+The snippet is automatically saved and registered as a tool. You can now use it like any other MCP tool:
+
+```typescript
+await orchestrator.callTool('my-tool-name', { arg1: 'value' });
+```
+
+### 4. Auto-Saving
+If you use `generateAndExecute` with `saveToSnippets: true`, the orchestrator will automatically save any code with valid metadata that executes successfully.
+
+```typescript
+await orchestrator.generateAndExecute('Create a tool named "echo" that prints the input', {
+  saveToSnippets: true
+});
 ```
 
 ## Traditional Tool Calling

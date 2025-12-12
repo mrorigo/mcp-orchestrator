@@ -85,3 +85,19 @@ const result = await orchestrator.execute('retry', {
 - **DevOpsAgent**: Manages infrastructure, monitors health, handles deployments
 
 See the `examples/` directory for complete implementations.
+
+## Using Saved Snippets
+
+Agents can utilize tools created via the Snippet System just like any other MCP tool.
+
+```typescript
+class MyAgent extends BaseAgent {
+  async performTask() {
+    // Call a snippet-generated tool
+    const result = await this.callTool('my-custom-snippet-tool', { 
+      param: 'value' 
+    });
+    return result;
+  }
+}
+```

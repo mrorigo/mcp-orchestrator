@@ -40,15 +40,21 @@ import {
 import {
     CODE_MODE_SYSTEM_PROMPT,
     buildCodeGenerationPrompt,
-    extractCodeFromResponse
-} from './codemode/prompts';
+    extractCodeFromResponse,
+    SnippetManager,
+    SnippetVirtualServer,
+    extractSnippetMetadata
+} from './codemode';
+import { config as appConfig } from './config';
 
 export class MCPOrchestrator extends EventEmitter {
     public tools: ToolRegistry;
     private clients: Map<string, Client>;
     private config: OrchestratorConfig;
     public llm: LLMProvider;
-    private samplingClients: Map<string, SamplingClient>;
+    private samplingClients: Map<string, SamplingClient> = new Map();
+    private snippetManager?: SnippetManager;
+    private snippetServer?: SnippetVirtualServer;
     private samplingCapabilities: Map<string, SamplingCapabilities>;
     private defaultSamplingOptions: SamplingOptions;
     private serverSession?: Server;
@@ -70,6 +76,14 @@ export class MCPOrchestrator extends EventEmitter {
         });
         this.apiGenerator = new APIGenerator(this);
 
+        if (appConfig.enableSnippetMode) {
+            this.snippetManager = new SnippetManager(appConfig.snippetStoragePath);
+            this.snippetServer = new SnippetVirtualServer(
+                this.snippetManager,
+                this.executeCode.bind(this)
+            );
+        }
+
         if (config.connectionOptions?.autoConnect) {
             this.connect().catch(err => {
                 console.error("Failed to auto-connect:", err);
@@ -82,6 +96,10 @@ export class MCPOrchestrator extends EventEmitter {
             this.connectToServer(name, config)
         );
         await Promise.all(promises);
+
+        if (this.snippetServer) {
+            await this.registerSnippetTools();
+        }
     }
 
     private async connectToServer(name: string, config: ServerConfig) {
@@ -199,10 +217,37 @@ export class MCPOrchestrator extends EventEmitter {
         }
     }
 
+
+    private async registerSnippetTools() {
+        if (!this.snippetServer) return;
+        const tools = await this.snippetServer.listTools();
+        for (const tool of tools) {
+            this.tools.register('snippets', tool);
+        }
+    }
+
+    async saveSnippet(code: string, name: string, description: string, schema?: Record<string, unknown>) {
+        if (!this.snippetManager) {
+            throw new Error('Snippet mode is not enabled');
+        }
+        await this.snippetManager.saveSnippet({
+            name,
+            description,
+            code,
+            inputSchema: schema,
+            createdAt: new Date().toISOString()
+        });
+        await this.registerSnippetTools();
+    }
+
     async callTool<T = any>(name: string, args: any): Promise<T> {
         const tool = this.tools.get(name);
         if (!tool) {
-            throw new Error(`Tool ${name} not found`);
+            throw new Error(`Tool '${name}' not found`);
+        }
+
+        if (tool.serverName === 'snippets' && this.snippetServer) {
+            return this.snippetServer.callTool(name, args) as Promise<T>;
         }
 
         const client = this.clients.get(tool.serverName);
@@ -218,7 +263,7 @@ export class MCPOrchestrator extends EventEmitter {
 
             // MCP result content is an array of Content objects (TextContent | ImageContent | EmbeddedResource)
             // For simplicity, we'll try to parse the first text content as JSON if possible, or return the raw content
-            // But typically tool calls return structured data. 
+            // But typically tool calls return structured data.
             // The SDK types might define result as { content: ... }
 
             // If the tool returns a JSON string in text, we might want to parse it?
@@ -686,6 +731,7 @@ export class MCPOrchestrator extends EventEmitter {
 
         // Extract code from response (handles markdown code blocks)
         let code = extractCodeFromResponse(codeResponse);
+        const metadata = extractSnippetMetadata(code);
 
         // Execute with retries
         let lastError: string | undefined;
@@ -695,8 +741,30 @@ export class MCPOrchestrator extends EventEmitter {
             const result = await this.executeCode(code, options);
 
             if (result.success) {
-                // Add the generated code to the result
-                return { ...result, code };
+                // Add the generated code and metadata to the result
+                const finalResult: CodeExecutionResult = {
+                    ...result,
+                    code,
+                    name: metadata.name,
+                    description: metadata.description,
+                    inputSchema: metadata.inputSchema
+                };
+
+                // Auto-save if requested and possible
+                if (options?.saveToSnippets && metadata.name && this.snippetManager) {
+                    try {
+                        await this.saveSnippet(
+                            code,
+                            metadata.name,
+                            metadata.description || '',
+                            metadata.inputSchema
+                        );
+                    } catch (e) {
+                        console.warn('Failed to auto-save snippet:', e);
+                    }
+                }
+
+                return finalResult;
             }
 
             lastError = result.error;

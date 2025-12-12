@@ -24,6 +24,11 @@ export class CodeExecutor {
             // Provide tools API
             tools: toolsAPI,
 
+            // Global arguments
+            args: options.args || {},
+
+            // Safe globals
+
             // Safe globals
             console: consoleProxy,
             Promise,
