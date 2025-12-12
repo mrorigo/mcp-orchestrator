@@ -591,7 +591,7 @@
       <nav>
         <ul>
           <li><a href="#features">Features</a></li>
-          <li><a href="#code-mode">Code Mode</a></li>
+          <li><a href="#code-mode">CodeMode</a></li>
           <li><a href="#patterns">Patterns</a></li>
           <li><a href="#workflow">Workflow</a></li>
           <li><a href="https://github.com/mrorigo/mcp-orchestrator" target="_blank" rel="noopener">GitHub</a></li>
@@ -795,6 +795,61 @@ const analysis = await orchestrator.llm.generateStructured({
   prompt: `Analyze these files: ${JSON.stringify(files)}`
 });</code></pre>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="snippets">
+      <h2>Snippet System: Reuse Your Best Code</h2>
+      <p>Don't throw away working code. The Snippet System automatically promotes successful "Code Mode" scripts into
+        first-class MCP tools, building a library of reusable experts.</p>
+
+      <div class="columns">
+        <div class="panel">
+          <div class="pill">1. Auto-Save</div>
+          <p style="margin-top:12px; font-size:14px; color:var(--muted)">Instruct the LLM to add metadata, and
+            successful executions are saved automatically.</p>
+          <pre><code class="language-typescript">// @name: resize_image
+// @description: Resize image to specific width
+// @input: {"width": "number", "path": "string"}
+
+const sharp = require('sharp'); // Mock requirement
+// ... code that does the work ...
+</code></pre>
+        </div>
+
+        <div class="panel">
+          <div class="pill">2. Reuse Instantly</div>
+          <p style="margin-top:12px; font-size:14px; color:var(--muted)">The snippet becomes a real tool in your
+            registry, callable by name.</p>
+          <pre><code class="language-typescript">// Call it like any other tool
+await orchestrator.callTool('resize_image', {
+  path: './photo.jpg',
+  width: 800
+});
+
+// Or let the LLM use it in future workflows
+await orchestrator.generateAndExecute(
+  'Resize all images in ./photos to 800px'
+);</code></pre>
+        </div>
+
+        <div class="panel">
+          <div class="pill">3. Compose Experts</div>
+          <p style="margin-top:12px; font-size:14px; color:var(--muted)">Combine basic snippets into powerful workflows.
+            The Code Mode LLM can see all your snippet-tools and orchestrate them.</p>
+          <pre><code class="language-typescript">// @name: process_gallery
+// @description: Optimizes and uploads gallery
+// Usage: automatically uses 'resize_image' and 'upload_s3' tools
+
+const files = await tools.list_directory({ path: './raw' });
+for (const file of files) {
+  // Uses previously saved 'resize_image' snippet
+  await tools.resize_image({ path: file.path, width: 800 });
+  // Uses another snippet
+  await tools.upload_s3({ bucket: 'my-gallery', key: file.name });
+}
+</code></pre>
         </div>
       </div>
     </section>
