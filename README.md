@@ -30,6 +30,14 @@ Choose the right approach for each task:
 - **LLM Sampling**: Dual-level sampling (orchestrator and sub-server)
 - **Composition Patterns**: Sequential, parallel, retry, conditional execution
 
+### 🆕 New in v0.5.0: A2A Integration
+
+**Native Agent-to-Agent Support**: Expose your orchestrated expert as a compliant A2A agent server. 
+- Allows other AI agents to discover and collaborate with your expert
+- Expose "Code Mode" as a trainable skill
+- Bridge any MCP tool to the A2A protocol automatically
+- Full support for task lifecycle, streaming, and cancellation
+
 ## Quick Start
 
 ```typescript
@@ -96,6 +104,7 @@ return fileSizes.sort((a, b) => b.lines - a.lines).slice(0, 5);
 
 - 📝 **Structured Outputs**: OpenAI and Anthropic support with Zod validation
 - 🔄 **Dual-Level Sampling**: Orchestrator and sub-server LLM sampling via MCP
+- 🤝 **A2A Bridge**: Native Agent-to-Agent protocol support for multi-agent collaboration
 - 🔧 **Zero-Opinion**: Use with any workflow engine or plain async/await
 - 🔐 **Security**: Approval workflows, audit logging, rate limiting
 
@@ -170,6 +179,46 @@ await orchestrator.generateAndExecute('Create a tool named "echo" that prints th
   saveToSnippets: true
 });
 ```
+
+## A2A Integration (Agent-to-Agent)
+
+Expose your orchestrated expert as a native A2A agent, allowing other agents to collaborate with it.
+
+### 1. Create the Bridge
+```typescript
+import { McpA2aBridge } from 'mcp-orchestrator/a2a';
+
+// Create a bridge for your orchestrator
+const bridge = new McpA2aBridge(orchestrator, {
+    name: "My Expert Agent",
+    description: "An agent that helps with X, Y, and Z"
+});
+```
+
+### 2. Add Skills
+You can expose specific capabilities as A2A "Skills":
+
+```typescript
+// Expose the "Code Mode" engine (Natural Language -> Code -> Execution)
+bridge.addCodeModeSkill({
+    name: "Code Expert",
+    systemPrompt: "You are a helpful coding assistant."
+});
+
+// Expose a specific tool directly
+bridge.addToolSkill("calculate_sum");
+```
+
+### 3. Mount to Express
+```typescript
+const app = express();
+app.use(express.json());
+
+// Mount the A2A protocol endpoints
+app.use("/a2a", bridge.createExpressRouter());
+```
+
+Your agent is now discoverable via `/.well-known/agent-card.json` and supports the full A2A lifecycle (tasks, status updates, cancellation).
 
 ## Traditional Tool Calling
 

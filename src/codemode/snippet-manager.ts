@@ -85,7 +85,7 @@ export class SnippetManager {
             const filePath = path.join(this.storagePath, fileName);
             await fs.unlink(filePath);
             return true;
-        } catch (error) {
+        } catch {
             return false;
         }
     }

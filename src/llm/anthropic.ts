@@ -51,7 +51,8 @@ export class AnthropicProvider implements LLMProvider {
                 messages: [{ role: 'user', content: jsonPrompt }],
             });
 
-            const text = response.content[0].type === 'text' ? response.content[0].text : '';
+            const firstBlock = response.content[0];
+            const text = (firstBlock?.type === 'text') ? firstBlock.text : '';
             const json = JSON.parse(text); // This is risky without robust extraction
             return schema.parse(json);
         } catch (error: unknown) {
@@ -68,6 +69,7 @@ export class AnthropicProvider implements LLMProvider {
             messages: [{ role: 'user', content: options.prompt }],
         });
 
-        return response.content[0].type === 'text' ? response.content[0].text : '';
+        const firstBlock = response.content[0];
+        return (firstBlock?.type === 'text') ? firstBlock.text : '';
     }
 }

@@ -590,8 +590,8 @@
       </div>
       <nav>
         <ul>
-          <li><a href="#features">Features</a></li>
-          <li><a href="#code-mode">CodeMode</a></li>
+          <li><a href="#snippets">Snippets</a></li>
+          <li><a href="#a2a">A2A</a></li>
           <li><a href="#patterns">Patterns</a></li>
           <li><a href="#workflow">Workflow</a></li>
           <li><a href="https://github.com/mrorigo/mcp-orchestrator" target="_blank" rel="noopener">GitHub</a></li>
@@ -621,6 +621,7 @@
           <div class="tag">🌐 Multi-Server Orchestration</div>
           <div class="tag">🔒 Secure VM Sandbox</div>
           <div class="tag">📊 60-75% Token Savings</div>
+          <div class="tag">🤝 A2A Integration</div>
         </div>
       </div>
 
@@ -854,11 +855,56 @@ for (const file of files) {
       </div>
     </section>
 
+    <section class="section" id="a2a">
+      <h2>A2A Integration: Agent-to-Agent Collaboration</h2>
+      <p>Don't build in isolation. Expose your MCP Orchestrator expert as a compliant A2A agent server, enabling it to
+        communicate, negotiate, and collaborate with other AI agents.</p>
+
+      <div class="columns">
+        <div class="panel">
+          <div class="pill">Define Bridge</div>
+          <p style="margin-top:12px; font-size:14px; color:var(--muted)">Wrap your orchestrator in a bridge to handle
+            the A2A protocol automatically.</p>
+          <pre><code class="language-typescript">import { McpA2aBridge } from 'mcp-orchestrator-ts/a2a';
+
+const bridge = new McpA2aBridge(orchestrator, {
+  name: "DataExpert",
+  description: "Analyzes datasets using Python & SQL tools"
+});</code></pre>
+        </div>
+
+        <div class="panel">
+          <div class="pill">Expose Skills</div>
+          <p style="margin-top:12px; font-size:14px; color:var(--muted)">Choose what to expose: raw tools or the
+            powerful Code Mode.</p>
+          <pre><code class="language-typescript">// Expose Code Mode as the main "brain"
+bridge.addCodeModeSkill({
+  systemPrompt: "You are a senior data analyst..."
+});
+
+// Expose specific tools directly
+bridge.addToolSkill("query_database", {
+  description: "Execute read-only SQL queries"
+});</code></pre>
+        </div>
+      </div>
+
+      <div class="code-card" style="margin-top: 20px;">
+        <div class="code-head"><span>Mount to Express</span></div>
+        <pre><code class="language-typescript">const app = express();
+
+// Your expert is now an A2A server available at /a2a-agent
+app.use("/a2a-agent", bridge.createExpressRouter());
+
+app.listen(3000, () => console.log("Agent listening on port 3000"));</code></pre>
+      </div>
+    </section>
+
     <section class="section" id="features">
       <h2>Orchestration Features</h2>
       <p>Flexible execution modes, multi-server coordination, and production-ready security for building reliable AI
         agents.</p>
-      <div class="grid">
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));">
         <div class="card">
           <div class="icon">🌐</div>
           <strong>Multi-Server Management</strong>
@@ -870,6 +916,12 @@ for (const file of files) {
           <strong>Flexible Execution</strong>
           <p>Choose code mode for complex workflows, tool calling for simple ops, or LLM sampling for dual-level
             control.</p>
+        </div>
+        <div class="card">
+          <div class="icon">🤝</div>
+          <strong>A2A Bridge</strong>
+          <p>Turn your orchestrated expert into a native Agent-to-Agent server. Let other agents discover and
+            collaborate with your tools.</p>
         </div>
         <div class="card">
           <div class="icon">TS</div>
@@ -977,6 +1029,11 @@ for (const file of files) {
           <strong>Secure & monitor</strong>
           <p class="muted">Approval hooks, rate limits, sandbox restrictions, and traces keep production safe.</p>
           <small>SamplingSecurityManager</small>
+        </div>
+        <div class="timeline-card" data-step="05">
+          <strong>Expose & Collaborate</strong>
+          <p class="muted">Turn your agent into an A2A server to let other agents discover and hire your expert.</p>
+          <small>McpA2aBridge</small>
         </div>
       </div>
     </section>

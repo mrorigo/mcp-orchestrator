@@ -1,6 +1,6 @@
 {
   "name": "mcp-orchestrator-ts",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Orchestrate MCP servers with Code Mode - let LLMs write TypeScript code for complex workflows. Supports multi-server coordination, secure VM sandboxing, and 60-75% token savings.",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -15,6 +15,11 @@
       "types": "./dist/llm/index.d.ts",
       "require": "./dist/llm/index.js",
       "import": "./dist/llm/index.mjs"
+    },
+    "./a2a": {
+      "types": "./dist/a2a/index.d.ts",
+      "require": "./dist/a2a/index.js",
+      "import": "./dist/a2a/index.mjs"
     }
   },
   "bin": {
@@ -64,22 +69,27 @@
     "LICENSE"
   ],
   "dependencies": {
+    "@a2a-js/sdk": "^0.3.6",
     "@anthropic-ai/sdk": "^0.32.0",
     "@modelcontextprotocol/sdk": "^1.24.3",
     "commander": "^14.0.2",
+    "express": "^5.2.1",
     "json-schema-to-typescript": "^15.0.4",
     "openai": "^4.73.0",
+    "uuid": "^13.0.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^22.9.0",
+    "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.48.1",
     "@typescript-eslint/parser": "^8.48.1",
-    "@vitest/coverage-v8": "^2.1.9",
+    "@vitest/coverage-v8": "^4.0.15",
     "eslint": "^9.39.1",
     "ts-node": "^10.9.2",
     "tsup": "^8.5.1",
     "typescript": "^5.6.3",
-    "vitest": "^2.1.5"
+    "vitest": "^4.0.15"
   }
 }

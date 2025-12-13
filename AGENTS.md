@@ -100,4 +100,20 @@ class MyAgent extends BaseAgent {
     return result;
   }
 }
+
+## Exposing Agents via A2A
+
+Turn any orchestrator-powered agent into an A2A-compliant server to enable multi-agent collaboration.
+
+```typescript
+import { McpA2aBridge } from 'mcp-orchestrator/a2a';
+
+const bridge = new McpA2aBridge(orchestrator, { name: "AgentName" });
+
+// Route A2A tasks to your agent logic, Code Mode, or specific tools
+bridge.addCodeModeSkill({ 
+    systemPrompt: "You are a specialized agent for..." 
+});
 ```
+
+See the main README or `examples/a2a_server.ts` for full details.

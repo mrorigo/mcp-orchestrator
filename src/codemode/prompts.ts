@@ -110,7 +110,7 @@ export function extractCodeFromResponse(response: string): string {
     const codeBlockRegex = /```(?:typescript|ts|javascript|js)?\n([\s\S]*?)```/;
     const match = response.match(codeBlockRegex);
 
-    if (match) {
+    if (match && match.length > 1 && match[1]) {
         return match[1].trim();
     }
 
@@ -126,19 +126,19 @@ export function extractSnippetMetadata(code: string): { name?: string; descripti
 
     // Extract name
     const nameMatch = code.match(/\/\/\s*@name:\s*([a-zA-Z0-9_-]+)/);
-    if (nameMatch) {
+    if (nameMatch && nameMatch.length > 1 && nameMatch[1]) {
         metadata.name = nameMatch[1].trim();
     }
 
     // Extract description
     const descMatch = code.match(/\/\/\s*@description:\s*(.+)/);
-    if (descMatch) {
+    if (descMatch && descMatch.length > 1 && descMatch[1]) {
         metadata.description = descMatch[1].trim();
     }
 
     // Extract input schema
     const inputMatch = code.match(/\/\/\s*@input:\s*(.+)/);
-    if (inputMatch) {
+    if (inputMatch && inputMatch.length > 1 && inputMatch[1]) {
         try {
             metadata.inputSchema = JSON.parse(inputMatch[1].trim());
         } catch (e) {
