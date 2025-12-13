@@ -50,7 +50,7 @@ export class OpenAIProvider implements LLMProvider {
                     max_tokens: options.maxTokens ?? this.defaultOptions.maxTokens,
                 });
 
-                const result = completion.choices[0].message.parsed;
+                const result = completion.choices[0]?.message.parsed;
                 if (!result) {
                     throw new Error("Failed to parse structured output");
                 }
@@ -85,6 +85,6 @@ export class OpenAIProvider implements LLMProvider {
             max_tokens: options.maxTokens ?? this.defaultOptions.maxTokens,
         });
 
-        return completion.choices[0].message.content || '';
+        return completion.choices[0]?.message.content || '';
     }
 }
