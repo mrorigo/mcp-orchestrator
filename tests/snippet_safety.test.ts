@@ -25,7 +25,7 @@ describe('Snippet Safety Integration', () => {
             listSnippets: vi.fn(),
             getSnippet: vi.fn(),
         };
-        (SnippetManager as any).mockImplementation(() => mockSnippetManager);
+        (SnippetManager as any).mockImplementation(function () { return mockSnippetManager; });
 
         // Setup Mock LLM
         mockLLM = {
@@ -53,9 +53,11 @@ describe('Snippet Safety Integration', () => {
             executionTime: 10
         });
 
-        (CodeExecutor as any).mockImplementation(() => ({
-            execute: mockExecute
-        }));
+        (CodeExecutor as any).mockImplementation(function () {
+            return {
+                execute: mockExecute
+            };
+        });
 
         // Execute
         await expect(orchestrator.generateAndExecute('make a tool', {
@@ -79,9 +81,11 @@ describe('Snippet Safety Integration', () => {
             executionTime: 10
         });
 
-        (CodeExecutor as any).mockImplementation(() => ({
-            execute: mockExecute
-        }));
+        (CodeExecutor as any).mockImplementation(function () {
+            return {
+                execute: mockExecute
+            };
+        });
 
         // Execute
         await orchestrator.generateAndExecute('make a tool', {

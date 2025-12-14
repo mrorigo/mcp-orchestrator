@@ -6,21 +6,23 @@ import { OpenAI } from 'openai';
 // Mock OpenAI client
 vi.mock('openai', () => {
     return {
-        OpenAI: vi.fn().mockImplementation(() => ({
-            chat: {
-                completions: {
-                    create: vi.fn(),
-                    parse: vi.fn()
-                }
-            },
-            beta: {
+        OpenAI: vi.fn().mockImplementation(function () {
+            return {
                 chat: {
                     completions: {
+                        create: vi.fn(),
                         parse: vi.fn()
                     }
+                },
+                beta: {
+                    chat: {
+                        completions: {
+                            parse: vi.fn()
+                        }
+                    }
                 }
-            }
-        }))
+            };
+        })
     };
 });
 

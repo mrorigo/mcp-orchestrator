@@ -7,24 +7,28 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 // Mock the SDK classes
 vi.mock("@modelcontextprotocol/sdk/client/index.js", () => {
     return {
-        Client: vi.fn().mockImplementation(() => ({
-            connect: vi.fn().mockResolvedValue(undefined),
-            close: vi.fn().mockResolvedValue(undefined),
-            listTools: vi.fn().mockResolvedValue({ tools: [] }),
-            getServerCapabilities: vi.fn().mockReturnValue({ sampling: {} }),
-            setRequestHandler: vi.fn()
-        }))
+        Client: vi.fn().mockImplementation(function () {
+            return {
+                connect: vi.fn().mockResolvedValue(undefined),
+                close: vi.fn().mockResolvedValue(undefined),
+                listTools: vi.fn().mockResolvedValue({ tools: [] }),
+                getServerCapabilities: vi.fn().mockReturnValue({ sampling: {} }),
+                setRequestHandler: vi.fn()
+            };
+        })
     };
 });
 
 vi.mock("@modelcontextprotocol/sdk/server/index.js", () => {
     return {
-        Server: vi.fn().mockImplementation(() => ({
-            connect: vi.fn().mockResolvedValue(undefined),
-            close: vi.fn().mockResolvedValue(undefined),
-            setRequestHandler: vi.fn(),
-            addTool: vi.fn()
-        }))
+        Server: vi.fn().mockImplementation(function () {
+            return {
+                connect: vi.fn().mockResolvedValue(undefined),
+                close: vi.fn().mockResolvedValue(undefined),
+                setRequestHandler: vi.fn(),
+                addTool: vi.fn()
+            };
+        })
     };
 });
 
